@@ -59,10 +59,16 @@ async fn app_install(
             .await?;
         let mut config: commerce::Settings =
             serde_json::from_value(row.get("data")).map_err(|_| bad("Invalid settings"))?;
-        if !config.payments.iter().any(|p| p.id == "paypal-sandbox") {
+        let live = payments::environment() == "live";
+        let method = if live {
+            "paypal-live"
+        } else {
+            "paypal-sandbox"
+        };
+        if !config.payments.iter().any(|p| p.id == method) {
             config.payments.push(commerce::Payment {
-                id: "paypal-sandbox".into(),
-                name: "PayPal Sandbox".into(),
+                id: method.into(),
+                name: if live { "PayPal" } else { "PayPal Sandbox" }.into(),
                 active: payments::account(&t).is_ok(),
                 business_only: false,
                 mode: "app".into(),

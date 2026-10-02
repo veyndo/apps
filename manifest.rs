@@ -8,6 +8,8 @@ pub(crate) struct Manifest {
     pub core_api: String,
     pub runtime: String,
     pub name: HashMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
     pub permissions: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub configuration: Option<ConfigurationContract>,
@@ -84,6 +86,12 @@ pub(crate) fn identifier(s: &str) -> bool {
         && s.as_bytes()[0].is_ascii_lowercase()
 }
 pub(crate) fn validate(m: &Manifest) -> Result<()> {
+    if m.category
+        .as_deref()
+        .is_some_and(|c| !["commerce", "payment", "api", "ai", "design", "operations"].contains(&c))
+    {
+        return Err(bad("Unknown app category"));
+    }
     if !identifier(&m.id)
         || m.core_api != "1"
         || !["declarative", "service"].contains(&m.runtime.as_str())
