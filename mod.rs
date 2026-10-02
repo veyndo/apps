@@ -1,15 +1,18 @@
 //! Versioned app packages: managed data, UI slots, agent tools and isolated service calls.
 use crate::*;
-mod configurator;
+mod cart_contributions;
+mod compatibility;
 mod data;
 mod events;
 mod gateway;
 mod planning;
+mod runtime;
 pub(crate) use planning::*;
 mod manifest;
 mod registry;
 mod routes;
-pub(crate) use configurator::*;
+pub(crate) use cart_contributions::*;
+pub(crate) use compatibility::upgrade_cart;
 pub(crate) use events::*;
 pub(crate) use gateway::{app_tools, invoke_app};
 pub(crate) use manifest::*;

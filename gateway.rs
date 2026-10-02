@@ -81,7 +81,7 @@ pub(crate) async fn invoke_app(
         "save" => data::save(a, &t, &m, e.ok_or(bad("Entity required"))?, v).await,
         "configurations" => {
             merchant(a, h)?;
-            configurations(a, &t).await
+            configurations(a, &t, id).await
         }
         "service" => {
             if !m.permissions.contains(&"service.call".into()) || m.runtime != "service" {

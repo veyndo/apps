@@ -9,6 +9,8 @@ pub(crate) struct Manifest {
     pub runtime: String,
     pub name: HashMap<String, String>,
     pub permissions: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub configuration: Option<ConfigurationContract>,
     #[serde(default)]
     pub entities: Vec<Entity>,
     #[serde(default)]
@@ -17,6 +19,18 @@ pub(crate) struct Manifest {
     pub actions: Vec<Action>,
     #[serde(default)]
     pub events: Vec<String>,
+}
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct ConfigurationContract {
+    pub entity: String,
+    pub record: String,
+    pub price_field: String,
+    pub input_field: String,
+    pub wasm_source: String,
+    pub default_fields: Value,
+    pub label: HashMap<String, String>,
+    pub hint: HashMap<String, String>,
 }
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -114,6 +128,24 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             }
         }
     }
+    if let Some(c) = &m.configuration
+        && (!identifier(&c.entity)
+            || !identifier(&c.price_field)
+            || !identifier(&c.input_field)
+            || c.record.is_empty()
+            || c.record.len() > 100
+            || c.wasm_source.len() > 32768
+            || !m.permissions.contains(&"data.read".into())
+            || !m.permissions.contains(&"data.write".into())
+            || !m.entities.iter().any(|e| {
+                e.name == c.entity
+                    && e.fields
+                        .iter()
+                        .any(|f| f.name == c.price_field && f.kind == "integer" && f.required)
+            }))
+    {
+        return Err(bad("Invalid app configuration contract"));
+    }
     let mut actions = std::collections::HashSet::new();
     for a in &m.actions {
         if !identifier(&a.name)
@@ -123,7 +155,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             || a.input_schema["type"] != "object"
             || a.input_schema["additionalProperties"] != false
             || (a.handler == "save" && a.public)
-            || (a.handler == "configurations" && (a.public || m.id != "engraving"))
+            || (a.handler == "configurations" && a.public)
             || a.entity
                 .as_ref()
                 .is_some_and(|n| !m.entities.iter().any(|e| e.name == *n))
@@ -147,6 +179,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
                 "entity-form",
                 "entity-list",
                 "engraving",
+                "product-configuration",
                 "payments",
                 "iframe",
             ]
@@ -193,10 +226,22 @@ mod tests {
         assert!(validate(&m).is_err());
     }
     #[test]
+    fn executable_package_matches_app_source() {
+        let m: Manifest = serde_json::from_str(include_str!(
+            "../../extensions/apps/engraving/manifest.json"
+        ))
+        .unwrap();
+        assert_eq!(
+            m.configuration.unwrap().wasm_source,
+            include_str!("../../extensions/apps/engraving/configuration.wat")
+        );
+    }
+    #[test]
     fn built_in_packages_are_valid() {
         for s in [
             include_str!("../../extensions/apps/engraving/manifest.json"),
             include_str!("../../extensions/apps/paypal/manifest.json"),
+            include_str!("../../extensions/apps/gift-message/manifest.json"),
         ] {
             validate(&serde_json::from_str(s).unwrap()).unwrap();
         }

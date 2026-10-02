@@ -14,6 +14,14 @@ pub(crate) async fn package(a: &App, t: &str, id: &str, active: bool) -> Result<
 }
 pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
     validate(&m)?;
+    if let Some(c) = &m.configuration {
+        let entity = m.entities.iter().find(|e| e.name == c.entity).unwrap();
+        data::fields(entity, &c.default_fields)?;
+        let fee = c.default_fields[&c.price_field]
+            .as_i64()
+            .ok_or(bad("Default price required"))?;
+        runtime::validate_fee(c, fee).await?;
+    }
     let mut tx = a.db.begin().await?;
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,7))")
         .bind(&m.id)
@@ -175,6 +183,32 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
         .bind(json!({"app":m.id,"version":m.version,"digest":digest}))
         .execute(&mut *tx)
         .await?;
+    if let Some(c) = &m.configuration {
+        let sql = format!(
+            "SELECT EXISTS(SELECT 1 FROM public.{} WHERE tenant=$1 AND id=$2)",
+            table(&m.id, &c.entity)
+        );
+        sqlx::query("SELECT set_config('rac.tenant',$1,true)")
+            .bind(t)
+            .execute(&mut *tx)
+            .await?;
+        let exists: bool = sqlx::query_scalar(sqlx::AssertSqlSafe(sql.as_str()))
+            .bind(t)
+            .bind(&c.record)
+            .fetch_one(&mut *tx)
+            .await?;
+        if !exists {
+            let entity = m.entities.iter().find(|e| e.name == c.entity).unwrap();
+            data::save_tx(
+                &mut tx,
+                t,
+                &m,
+                entity,
+                &json!({"id":c.record,"fields":c.default_fields}),
+            )
+            .await?;
+        }
+    }
     tx.commit().await?;
     Ok(json!({"installed":true,"id":m.id,"version":m.version,"digest":digest}))
 }

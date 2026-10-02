@@ -11,7 +11,7 @@ pub(crate) fn app_router() -> Router<App> {
             get(entity_list).post(entity_save),
         )
         .route("/store-api/apps/slots", get(slots))
-        .route("/store-api/apps/engraving/configure", post(engrave))
+        .route("/store-api/apps/{id}/configure", post(configure_action))
 }
 async fn app_list(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
     let t = merchant(&a, &h)?;
@@ -46,21 +46,6 @@ async fn app_install(
         return Err(bad("Built-in app IDs are reserved"));
     }
     let result = install(&a, &t, m).await?;
-    if v["builtIn"] == "engraving" {
-        let m = package(&a, &t, "engraving", true).await?;
-        let e = &m.entities[0];
-        let existing = data::list(&a, &t, &m, e).await?;
-        if existing["elements"].as_array().unwrap().is_empty() {
-            data::save(
-                &a,
-                &t,
-                &m,
-                e,
-                &json!({"id":"default","fields":{"fee_minor":300}}),
-            )
-            .await?;
-        }
-    }
     if v["builtIn"] == "paypal" {
         let mut tx = a.db.begin().await?;
         let row = sqlx::query("SELECT data FROM commerce_settings WHERE tenant=$1 FOR UPDATE")
@@ -151,12 +136,17 @@ async fn slots(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
             serde_json::from_value(r.get("manifest")).map_err(|_| bad("Invalid package"))?;
         if m.permissions.contains(&"storefront.slot".into()) {
             for s in m.slots.iter().filter(|s| s.location == "product.detail") {
-                slots.push(json!({"app":m.id,"version":m.version,"slot":s}));
+                slots.push(json!({"app":m.id,"version":m.version,"slot":s,"configuration":m.configuration.as_ref().map(|c|json!({"inputField":c.input_field,"label":c.label,"hint":c.hint}))}));
             }
         }
     }
     Ok(Json(json!({"slots":slots})))
 }
-async fn engrave(State(a): State<App>, h: HeaderMap, Json(v): Json<Value>) -> Result<Json<Value>> {
-    Ok(Json(configure(&a, &h, &v).await?))
+async fn configure_action(
+    State(a): State<App>,
+    h: HeaderMap,
+    Path(id): Path<String>,
+    Json(v): Json<Value>,
+) -> Result<Json<Value>> {
+    Ok(Json(configure(&a, &h, &id, &v).await?))
 }

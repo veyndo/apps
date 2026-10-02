@@ -70,13 +70,13 @@ pub(crate) async fn save_tx(
         return Err(Error(StatusCode::FORBIDDEN, "App needs data.write".into()));
     }
     fields(e, &v["fields"])?;
-    if m.id == "engraving"
-        && v["fields"]["fee_minor"]
-            .as_i64()
-            .is_none_or(|n| !(0..=100000).contains(&n))
+    if let Some(c) = &m.configuration
+        && c.entity == e.name
+        && let Some(fee) = v["fields"][&c.price_field].as_i64()
     {
-        return Err(bad("Engraving fee must be 0..100000 cents"));
+        runtime::validate_fee(c, fee).await?;
     }
+
     let id = v["id"]
         .as_str()
         .filter(|s| !s.is_empty() && s.len() <= 100)
