@@ -13,10 +13,20 @@ pub(crate) fn fields(e: &Entity, v: &Value) -> Result<()> {
             }
             continue;
         }
-        let ok = match f.kind.as_str() {
-            "integer" => value.as_i64().is_some(),
-            "boolean" => value.is_boolean(),
-            _ => value.as_str().is_some_and(|s| s.len() <= 2000),
+        let ok = if f.translatable {
+            value.as_object().is_some_and(|o| {
+                !o.is_empty()
+                    && o.keys()
+                        .all(|k| ["en", "de", "fr", "es"].contains(&k.as_str()))
+                    && o.values()
+                        .all(|v| v.as_str().is_some_and(|s| s.len() <= 2000))
+            })
+        } else {
+            match f.kind.as_str() {
+                "integer" => value.as_i64().is_some(),
+                "boolean" => value.is_boolean(),
+                _ => value.as_str().is_some_and(|s| s.len() <= 2000),
+            }
         };
         if !ok {
             return Err(bad(format!("Invalid field {}", f.name)));
@@ -104,10 +114,16 @@ pub(crate) async fn save_tx(
     let expressions = e
         .fields
         .iter()
-        .map(|f| match f.kind.as_str() {
-            "integer" => format!("($3->>'{}')::bigint", f.name),
-            "boolean" => format!("($3->>'{}')::boolean", f.name),
-            _ => format!("$3->>'{}'", f.name),
+        .map(|f| {
+            if f.translatable {
+                format!("$3->'{}'", f.name)
+            } else {
+                match f.kind.as_str() {
+                    "integer" => format!("($3->>'{}')::bigint", f.name),
+                    "boolean" => format!("($3->>'{}')::boolean", f.name),
+                    _ => format!("$3->>'{}'", f.name),
+                }
+            }
         })
         .collect::<Vec<_>>();
     let sets = names
@@ -140,9 +156,12 @@ mod tests {
     fn fields_reject_type_and_unknown_properties() {
         let e = Entity {
             name: "config".into(),
+            label: HashMap::new(),
             public_read: false,
             fields: vec![Field {
                 name: "fee".into(),
+                translatable: false,
+                label: HashMap::new(),
                 kind: "integer".into(),
                 required: true,
                 indexed: false,

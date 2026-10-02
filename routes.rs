@@ -141,7 +141,7 @@ async fn slots(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
             serde_json::from_value(r.get("manifest")).map_err(|_| bad("Invalid package"))?;
         if m.permissions.contains(&"storefront.slot".into()) {
             for s in m.slots.iter().filter(|s| s.location == "product.detail") {
-                slots.push(json!({"app":m.id,"version":m.version,"slot":s,"configuration":m.configuration.as_ref().map(|c|json!({"inputField":c.input_field,"label":c.label,"hint":c.hint}))}));
+                slots.push(json!({"app":m.id,"version":m.version,"slot":s,"entities":m.entities.iter().filter(|e|e.public_read).map(|e|json!({"name":e.name,"label":e.label,"fields":e.fields,"action":m.actions.iter().find(|a|a.public && a.handler=="list" && a.entity.as_deref()==Some(e.name.as_str())).map(|a|&a.name)})).collect::<Vec<_>>(),"configuration":m.configuration.as_ref().map(|c|json!({"inputField":c.input_field,"label":c.label,"hint":c.hint}))}));
             }
         }
     }

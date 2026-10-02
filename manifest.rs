@@ -36,6 +36,8 @@ pub(crate) struct ConfigurationContract {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct Entity {
     pub name: String,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub label: HashMap<String, String>,
     pub fields: Vec<Field>,
     #[serde(default)]
     pub public_read: bool,
@@ -44,6 +46,10 @@ pub(crate) struct Entity {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct Field {
     pub name: String,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub translatable: bool,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub label: HashMap<String, String>,
     pub kind: String,
     #[serde(default)]
     pub required: bool,
@@ -120,6 +126,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
                 || ["tenant", "id", "revision"].contains(&f.name.as_str())
                 || !fields.insert(&f.name)
                 || !["string", "integer", "boolean"].contains(&f.kind.as_str())
+                || (f.translatable && (f.kind != "string" || f.references.is_some()))
                 || f.references
                     .as_ref()
                     .is_some_and(|r| f.kind != "string" || !m.entities.iter().any(|e| e.name == *r))

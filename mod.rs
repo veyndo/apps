@@ -2,7 +2,7 @@
 use crate::*;
 mod cart_contributions;
 mod compatibility;
-mod data;
+pub(crate) mod data;
 mod events;
 mod gateway;
 mod planning;

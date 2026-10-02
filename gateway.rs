@@ -102,6 +102,9 @@ pub(crate) async fn service_call(
     path: &str,
     v: &Value,
 ) -> Result<Value> {
+    if crate::staging::parent(a, t).await?.is_some() {
+        return Err(bad("External services are disabled in private sandboxes"));
+    }
     // No URL or credential comes from the manifest, merchant, model or event payload.
     let configured: Value = serde_json::from_str(&env::var("APP_SERVICES").unwrap_or("{}".into()))
         .map_err(|_| bad("Invalid operator service configuration"))?;

@@ -13,6 +13,16 @@ pub(crate) async fn package(a: &App, t: &str, id: &str, active: bool) -> Result<
     serde_json::from_value(row.get("manifest")).map_err(|_| bad("Invalid installed manifest"))
 }
 pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
+    let mut tx = a.db.begin().await?;
+    let result = install_tx(&mut tx, t, m).await?;
+    tx.commit().await?;
+    Ok(result)
+}
+pub(crate) async fn install_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    t: &str,
+    m: Manifest,
+) -> Result<Value> {
     validate(&m)?;
     if let Some(c) = &m.configuration {
         let entity = m.entities.iter().find(|e| e.name == c.entity).unwrap();
@@ -22,10 +32,9 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
             .ok_or(bad("Default price required"))?;
         runtime::validate_fee(c, fee).await?;
     }
-    let mut tx = a.db.begin().await?;
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,7))")
         .bind(&m.id)
-        .execute(&mut *tx)
+        .execute(&mut **tx)
         .await?;
     let value = json!(m);
     let digest = hash(&value.to_string());
@@ -34,7 +43,7 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
             .bind(t)
             .bind(&m.id)
             .bind(&m.version)
-            .fetch_optional(&mut *tx)
+            .fetch_optional(&mut **tx)
             .await?
         && old.get::<String, _>("digest") != digest
     {
@@ -44,7 +53,7 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
     if let Some(row) = sqlx::query("SELECT manifest FROM app_packages WHERE tenant=$1 AND id=$2")
         .bind(t)
         .bind(&m.id)
-        .fetch_optional(&mut *tx)
+        .fetch_optional(&mut **tx)
         .await?
     {
         let old: Manifest = serde_json::from_value(row.get("manifest"))
@@ -66,7 +75,13 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
                 .find(|v| v.name == e.name)
                 .ok_or(conflict("Removing entities requires an explicit migration"))?;
             for f in e.fields {
-                if !next.fields.contains(&f) {
+                if !next.fields.iter().any(|v| {
+                    v.name == f.name
+                        && v.kind == f.kind
+                        && v.required == f.required
+                        && v.references == f.references
+                        && v.translatable == f.translatable
+                }) {
                     return Err(conflict(
                         "Changing/removing fields requires an explicit migration",
                     ));
@@ -76,7 +91,7 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
     }
     let versions = sqlx::query("SELECT manifest FROM app_versions WHERE app=$1")
         .bind(&m.id)
-        .fetch_all(&mut *tx)
+        .fetch_all(&mut **tx)
         .await?;
     for old in versions {
         let old: Manifest =
@@ -85,7 +100,10 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
             if let Some(next) = m.entities.iter().find(|v| v.name == e.name) {
                 for f in e.fields {
                     if let Some(current) = next.fields.iter().find(|v| v.name == f.name)
-                        && *current != f
+                        && (current.kind != f.kind
+                            || current.required != f.required
+                            || current.references != f.references
+                            || current.translatable != f.translatable)
                     {
                         return Err(conflict("Shared app column contract cannot change"));
                     }
@@ -97,40 +115,44 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
         let name = table(&m.id, &e.name);
         let exists: bool = sqlx::query_scalar("SELECT to_regclass($1) IS NOT NULL")
             .bind(format!("public.{name}"))
-            .fetch_one(&mut *tx)
+            .fetch_one(&mut **tx)
             .await?;
         let ddl = format!(
             "CREATE TABLE IF NOT EXISTS public.{name}(tenant text NOT NULL REFERENCES public.tenants(id),id text NOT NULL,revision bigint NOT NULL DEFAULT 1,PRIMARY KEY(tenant,id))"
         );
         sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
         let ddl = format!(
             "ALTER TABLE public.{name} ENABLE ROW LEVEL SECURITY; ALTER TABLE public.{name} FORCE ROW LEVEL SECURITY"
         );
         sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
-        let policy:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename=$1 AND policyname='tenant_scope')").bind(&name).fetch_one(&mut *tx).await?;
+        let policy:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename=$1 AND policyname='tenant_scope')").bind(&name).fetch_one(&mut **tx).await?;
         if !policy {
             let ddl = format!(
                 "CREATE POLICY tenant_scope ON public.{name} USING(tenant=current_setting('rac.tenant',true)) WITH CHECK(tenant=current_setting('rac.tenant',true))"
             );
             sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
         }
         for f in &e.fields {
-            let present:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 AND column_name=$2)").bind(&name).bind(&f.name).fetch_one(&mut *tx).await?;
+            let present:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 AND column_name=$2)").bind(&name).bind(&f.name).fetch_one(&mut **tx).await?;
             if exists && !present && f.required {
                 return Err(conflict(
                     "New required field needs a data migration; add it nullable first",
                 ));
             }
-            let kind = match f.kind.as_str() {
-                "integer" => "bigint",
-                "boolean" => "boolean",
-                _ => "text",
+            let kind = if f.translatable {
+                "jsonb"
+            } else {
+                match f.kind.as_str() {
+                    "integer" => "bigint",
+                    "boolean" => "boolean",
+                    _ => "text",
+                }
             };
             let ddl = format!(
                 "ALTER TABLE public.{name} ADD COLUMN IF NOT EXISTS {} {kind} {}",
@@ -138,7 +160,7 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
                 if f.required { "NOT NULL" } else { "" }
             );
             sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
             if f.indexed {
                 let ddl = format!(
@@ -147,7 +169,7 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
                     f.name
                 );
                 sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
-                    .execute(&mut *tx)
+                    .execute(&mut **tx)
                     .await?;
             }
         }
@@ -161,7 +183,7 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
                     "SELECT EXISTS(SELECT 1 FROM pg_constraint WHERE conname=$1)",
                 )
                 .bind(&constraint)
-                .fetch_one(&mut *tx)
+                .fetch_one(&mut **tx)
                 .await?;
                 if !exists {
                     let ddl = format!(
@@ -170,18 +192,18 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
                         table(&m.id, target)
                     );
                     sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
-                        .execute(&mut *tx)
+                        .execute(&mut **tx)
                         .await?;
                 }
             }
         }
     }
-    sqlx::query("INSERT INTO app_versions(tenant,app,version,digest,manifest) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING").bind(t).bind(&m.id).bind(&m.version).bind(&digest).bind(&value).execute(&mut *tx).await?;
-    sqlx::query("INSERT INTO app_packages(tenant,id,version,manifest,digest) VALUES($1,$2,$3,$4,$5) ON CONFLICT(tenant,id) DO UPDATE SET version=EXCLUDED.version,manifest=EXCLUDED.manifest,digest=EXCLUDED.digest,active=true,revision=app_packages.revision+1").bind(t).bind(&m.id).bind(&m.version).bind(value).bind(&digest).execute(&mut *tx).await?;
+    sqlx::query("INSERT INTO app_versions(tenant,app,version,digest,manifest) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING").bind(t).bind(&m.id).bind(&m.version).bind(&digest).bind(&value).execute(&mut **tx).await?;
+    sqlx::query("INSERT INTO app_packages(tenant,id,version,manifest,digest) VALUES($1,$2,$3,$4,$5) ON CONFLICT(tenant,id) DO UPDATE SET version=EXCLUDED.version,manifest=EXCLUDED.manifest,digest=EXCLUDED.digest,active=true,revision=app_packages.revision+1").bind(t).bind(&m.id).bind(&m.version).bind(value).bind(&digest).execute(&mut **tx).await?;
     sqlx::query("INSERT INTO outbox(tenant,kind,data) VALUES($1,'app.installed',$2)")
         .bind(t)
         .bind(json!({"app":m.id,"version":m.version,"digest":digest}))
-        .execute(&mut *tx)
+        .execute(&mut **tx)
         .await?;
     if let Some(c) = &m.configuration {
         let sql = format!(
@@ -190,17 +212,17 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
         );
         sqlx::query("SELECT set_config('rac.tenant',$1,true)")
             .bind(t)
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
         let exists: bool = sqlx::query_scalar(sqlx::AssertSqlSafe(sql.as_str()))
             .bind(t)
             .bind(&c.record)
-            .fetch_one(&mut *tx)
+            .fetch_one(&mut **tx)
             .await?;
         if !exists {
             let entity = m.entities.iter().find(|e| e.name == c.entity).unwrap();
             data::save_tx(
-                &mut tx,
+                tx,
                 t,
                 &m,
                 entity,
@@ -209,6 +231,5 @@ pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
             .await?;
         }
     }
-    tx.commit().await?;
     Ok(json!({"installed":true,"id":m.id,"version":m.version,"digest":digest}))
 }
