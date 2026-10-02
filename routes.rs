@@ -2,6 +2,8 @@
 use super::*;
 pub(crate) fn app_router() -> Router<App> {
     Router::new()
+        .merge(evidence_routes::router())
+        .route("/store-api/apps/analytics.js", get(analytics_sdk))
         .route("/api/apps", get(app_list).post(app_install))
         .route("/api/apps/{id}", axum::routing::put(app_state))
         .route("/api/apps/{id}/actions/{action}", post(app_action))
@@ -17,7 +19,7 @@ async fn app_list(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
     let t = merchant(&a, &h)?;
     let rows=sqlx::query("SELECT id,version,manifest,active,revision,digest FROM app_packages WHERE tenant=$1 ORDER BY id").bind(t).fetch_all(&a.db).await?;
     Ok(Json(
-        json!({"apiVersion":"1","packages":rows.iter().map(|r|json!({"id":r.get::<String,_>("id"),"version":r.get::<String,_>("version"),"manifest":r.get::<Value,_>("manifest"),"uiUrl":gateway::ui_url(&r.get::<String,_>("id")),"active":r.get::<bool,_>("active"),"revision":r.get::<i64,_>("revision"),"digest":r.get::<String,_>("digest")})).collect::<Vec<_>>(),"builtIns":["engraving","paypal","shopware_payments","storyfront"],"serviceExecution":"operator-configured external services; no in-process guest code"}),
+        json!({"apiVersion":"1","packages":rows.iter().map(|r|json!({"id":r.get::<String,_>("id"),"version":r.get::<String,_>("version"),"manifest":r.get::<Value,_>("manifest"),"uiUrl":gateway::ui_url(&r.get::<String,_>("id")),"active":r.get::<bool,_>("active"),"revision":r.get::<i64,_>("revision"),"digest":r.get::<String,_>("digest")})).collect::<Vec<_>>(),"builtIns":["engraving","paypal","shopware_payments","storyfront","google_analytics","gmail","slack"],"serviceExecution":"operator-configured external services; no in-process guest code"}),
     ))
 }
 async fn app_install(
@@ -38,6 +40,11 @@ async fn app_install(
         Some("shopware_payments") => Some(include_str!(
             "../../extensions/apps/shopware-payments/manifest.json"
         )),
+        Some("google_analytics") => Some(include_str!(
+            "../../extensions/apps/google-analytics/manifest.json"
+        )),
+        Some("gmail") => Some(include_str!("../../extensions/apps/gmail/manifest.json")),
+        Some("slack") => Some(include_str!("../../extensions/apps/slack/manifest.json")),
         _ => None,
     };
     let m: Manifest = if let Some(s) = text {
@@ -45,7 +52,16 @@ async fn app_install(
     } else {
         serde_json::from_value(v["manifest"].clone()).map_err(|e| bad(e.to_string()))?
     };
-    if ["engraving", "paypal", "shopware_payments", "storyfront"].contains(&m.id.as_str())
+    if [
+        "engraving",
+        "paypal",
+        "shopware_payments",
+        "storyfront",
+        "google_analytics",
+        "gmail",
+        "slack",
+    ]
+    .contains(&m.id.as_str())
         && text.is_none()
     {
         return Err(bad("Built-in app IDs are reserved"));
@@ -160,4 +176,16 @@ async fn configure_action(
     Json(v): Json<Value>,
 ) -> Result<Json<Value>> {
     Ok(Json(configure(&a, &h, &id, &v).await?))
+}
+
+/// The shared public consent adapter contains no tenant configuration or provider credentials.
+async fn analytics_sdk() -> impl axum::response::IntoResponse {
+    (
+        [
+            ("content-type", "text/javascript; charset=utf-8"),
+            ("cache-control", "public, max-age=3600"),
+            ("x-content-type-options", "nosniff"),
+        ],
+        include_str!("../../extensions/sdk/analytics.js"),
+    )
 }

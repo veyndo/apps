@@ -13,16 +13,17 @@ pub(crate) async fn app_tools(a: &App, h: &HeaderMap) -> Result<Vec<Value>> {
         for action in &m.actions {
             if action.public
                 || merchant(a, h).is_ok()
-                    && (!["save", "service"].contains(&action.handler.as_str())
-                        || auth::permit(h, "catalog").is_ok())
+                    && (!["save", "service", "emit"].contains(&action.handler.as_str())
+                        || auth::permit(h, action.permission.as_deref().unwrap_or("catalog"))
+                            .is_ok())
             {
-                tools.push(json!({"name":format!("app.{}.{}",m.id,action.name),"description":action.description,"inputSchema":action.input_schema,"annotations":{"readOnlyHint":(["list","configurations"].contains(&action.handler.as_str()))}}));
+                tools.push(json!({"name":format!("app.{}.{}",m.id,action.name),"description":action.description,"inputSchema":action.input_schema,"annotations":{"readOnlyHint":(action.read_only || ["list","configurations"].contains(&action.handler.as_str()))}}));
             }
         }
     }
     Ok(tools)
 }
-fn validate_input(schema: &Value, v: &Value) -> Result<()> {
+pub(crate) fn validate_input(schema: &Value, v: &Value) -> Result<()> {
     let object = v.as_object().ok_or(bad("Action input must be an object"))?;
     let props = schema["properties"]
         .as_object()
@@ -68,8 +69,11 @@ pub(crate) async fn invoke_app(
     if !action.public {
         merchant(a, h)?;
     }
-    if action.handler == "save" || (action.handler == "service" && !action.public) {
-        auth::permit(h, "catalog")?;
+    if !action.public
+        && (["save", "service", "emit"].contains(&action.handler.as_str())
+            || action.permission.is_some())
+    {
+        auth::permit(h, action.permission.as_deref().unwrap_or("catalog"))?;
     }
     validate_input(&action.input_schema, v)?;
     let e = action
@@ -90,7 +94,25 @@ pub(crate) async fn invoke_app(
                     "Service permission required".into(),
                 ));
             }
-            service_call(a, &t, id, &format!("actions/{name}"), v).await
+            let result = service_call(a, &t, id, &format!("actions/{name}"), v).await?;
+            if result["purgeSources"] == true && m.permissions.contains(&"knowledge.write".into()) {
+                purge_sources(a, &t, id, result["exportCursor"].as_i64().unwrap_or(0)).await?;
+            }
+            Ok(result)
+        }
+        "emit" => {
+            if v.to_string().len() > 16384 {
+                return Err(bad("App event exceeds limit"));
+            }
+            let event: i64 = sqlx::query_scalar(
+                "INSERT INTO outbox(tenant,kind,data) VALUES($1,$2,$3) RETURNING id",
+            )
+            .bind(&t)
+            .bind(format!("app.{id}.{name}"))
+            .bind(v)
+            .fetch_one(&a.db)
+            .await?;
+            Ok(json!({"eventId":event,"accepted":true}))
         }
         _ => Err(bad("Unsupported app action")),
     }
