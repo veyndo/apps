@@ -242,6 +242,7 @@ mod tests {
             include_str!("../../extensions/apps/engraving/manifest.json"),
             include_str!("../../extensions/apps/paypal/manifest.json"),
             include_str!("../../extensions/apps/gift-message/manifest.json"),
+            include_str!("../../extensions/apps/storyfront/manifest.json"),
         ] {
             validate(&serde_json::from_str(s).unwrap()).unwrap();
         }

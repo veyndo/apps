@@ -17,7 +17,7 @@ async fn app_list(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
     let t = merchant(&a, &h)?;
     let rows=sqlx::query("SELECT id,version,manifest,active,revision,digest FROM app_packages WHERE tenant=$1 ORDER BY id").bind(t).fetch_all(&a.db).await?;
     Ok(Json(
-        json!({"apiVersion":"1","packages":rows.iter().map(|r|json!({"id":r.get::<String,_>("id"),"version":r.get::<String,_>("version"),"manifest":r.get::<Value,_>("manifest"),"uiUrl":gateway::ui_url(&r.get::<String,_>("id")),"active":r.get::<bool,_>("active"),"revision":r.get::<i64,_>("revision"),"digest":r.get::<String,_>("digest")})).collect::<Vec<_>>(),"builtIns":["engraving","paypal","shopware_payments"],"serviceExecution":"operator-configured external services; no in-process guest code"}),
+        json!({"apiVersion":"1","packages":rows.iter().map(|r|json!({"id":r.get::<String,_>("id"),"version":r.get::<String,_>("version"),"manifest":r.get::<Value,_>("manifest"),"uiUrl":gateway::ui_url(&r.get::<String,_>("id")),"active":r.get::<bool,_>("active"),"revision":r.get::<i64,_>("revision"),"digest":r.get::<String,_>("digest")})).collect::<Vec<_>>(),"builtIns":["engraving","paypal","shopware_payments","storyfront"],"serviceExecution":"operator-configured external services; no in-process guest code"}),
     ))
 }
 async fn app_install(
@@ -31,6 +31,9 @@ async fn app_install(
         Some("engraving") => Some(include_str!(
             "../../extensions/apps/engraving/manifest.json"
         )),
+        Some("storyfront") => Some(include_str!(
+            "../../extensions/apps/storyfront/manifest.json"
+        )),
         Some("paypal") => Some(include_str!("../../extensions/apps/paypal/manifest.json")),
         Some("shopware_payments") => Some(include_str!(
             "../../extensions/apps/shopware-payments/manifest.json"
@@ -42,7 +45,9 @@ async fn app_install(
     } else {
         serde_json::from_value(v["manifest"].clone()).map_err(|e| bad(e.to_string()))?
     };
-    if ["engraving", "paypal", "shopware_payments"].contains(&m.id.as_str()) && text.is_none() {
+    if ["engraving", "paypal", "shopware_payments", "storyfront"].contains(&m.id.as_str())
+        && text.is_none()
+    {
         return Err(bad("Built-in app IDs are reserved"));
     }
     let result = install(&a, &t, m).await?;
