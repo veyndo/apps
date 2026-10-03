@@ -186,6 +186,7 @@ mod tests {
             include_str!("../../extensions/apps/google-analytics/manifest.json"),
             include_str!("../../extensions/apps/gmail/manifest.json"),
             include_str!("../../extensions/apps/slack/manifest.json"),
+            include_str!("../../extensions/apps/email/manifest.json"),
         ] {
             validate(&serde_json::from_str(s).unwrap()).unwrap();
         }
