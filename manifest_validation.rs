@@ -50,7 +50,8 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             if !identifier(&f.name)
                 || ["tenant", "id", "revision"].contains(&f.name.as_str())
                 || !fields.insert(&f.name)
-                || !["string", "integer", "boolean"].contains(&f.kind.as_str())
+                || !["string", "integer", "boolean", "json"].contains(&f.kind.as_str())
+                || (f.kind == "json" && (f.indexed || f.references.is_some()))
                 || (f.translatable && (f.kind != "string" || f.references.is_some()))
                 || f.references
                     .as_ref()
@@ -143,5 +144,6 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             "Event subscriptions require service runtime and events.read",
         ));
     }
+    surfaces::validate_contract(m)?;
     Ok(())
 }

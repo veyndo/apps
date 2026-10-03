@@ -3,6 +3,7 @@ use super::*;
 pub(crate) fn app_router() -> Router<App> {
     Router::new()
         .merge(evidence_routes::router())
+        .merge(surfaces::router())
         .route("/store-api/apps/analytics.js", get(analytics_sdk))
         .route("/api/apps", get(app_list).post(app_install))
         .route("/api/apps/{id}", axum::routing::put(app_state))
@@ -126,6 +127,7 @@ async fn entity_list(
     State(a): State<App>,
     h: HeaderMap,
     Path((id, name)): Path<(String, String)>,
+    axum::extract::Query(q): axum::extract::Query<HashMap<String, String>>,
 ) -> Result<Json<Value>> {
     let t = merchant(&a, &h)?;
     let m = package(&a, &t, &id, true).await?;
@@ -134,7 +136,12 @@ async fn entity_list(
         .iter()
         .find(|e| e.name == name)
         .ok_or(bad("Unknown entity"))?;
-    Ok(Json(data::list(&a, &t, &m, e).await?))
+    let input = json!({"limit":q.get("limit").map(|s| s.parse::<i64>()).transpose().map_err(|_| bad("Invalid app limit"))?,"after":q.get("after"),"filter":q.get("filter").map(|s| serde_json::from_str::<Value>(s)).transpose().map_err(|_| bad("Invalid app filter"))?});
+    let mut input = input;
+    if input["filter"].is_null() {
+        input.as_object_mut().unwrap().remove("filter");
+    }
+    Ok(Json(data::list_page(&a, &t, &m, e, &input).await?))
 }
 async fn entity_save(
     State(a): State<App>,

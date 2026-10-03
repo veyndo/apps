@@ -25,6 +25,9 @@ pub(crate) fn fields(e: &Entity, v: &Value) -> Result<()> {
             match f.kind.as_str() {
                 "integer" => value.as_i64().is_some(),
                 "boolean" => value.is_boolean(),
+                "json" => {
+                    (value.is_object() || value.is_array()) && value.to_string().len() <= 8192
+                }
                 _ => value.as_str().is_some_and(|s| s.len() <= 2000),
             }
         };
@@ -34,7 +37,113 @@ pub(crate) fn fields(e: &Entity, v: &Value) -> Result<()> {
     }
     Ok(())
 }
-pub(crate) async fn list(a: &App, t: &str, m: &Manifest, e: &Entity) -> Result<Value> {
+/// Keyset pages and indexed equality filters never hydrate an app's entire table.
+pub(crate) async fn list_page(
+    a: &App,
+    t: &str,
+    m: &Manifest,
+    e: &Entity,
+    input: &Value,
+) -> Result<Value> {
+    if !m.permissions.contains(&"data.read".into()) {
+        return Err(Error(StatusCode::FORBIDDEN, "App needs data.read".into()));
+    }
+    let limit = input["limit"].as_i64().unwrap_or(100);
+    if !(1..=100).contains(&limit) {
+        return Err(bad("App page limit must be 1..100"));
+    }
+    let after = input["after"].as_str().unwrap_or("");
+    if after.len() > 100 {
+        return Err(bad("App cursor exceeds limit"));
+    }
+    let columns = e
+        .fields
+        .iter()
+        .map(|f| f.name.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    let prefix = format!(
+        "SELECT to_jsonb(r) AS data FROM (SELECT id,revision,{columns} FROM public.{} WHERE tenant=",
+        table(&m.id, &e.name)
+    );
+    let mut query = sqlx::QueryBuilder::<sqlx::Postgres>::new(prefix);
+    query.push_bind(t).push(" AND id > ").push_bind(after);
+    if let Some(filter) = input.get("filter") {
+        let filter = filter
+            .as_object()
+            .ok_or(bad("App filter must be an object"))?;
+        if filter.len() > 4 {
+            return Err(bad("App filter exceeds limit"));
+        }
+        for (name, value) in filter {
+            let f = e
+                .fields
+                .iter()
+                .find(|f| f.name == *name && f.indexed && !f.translatable)
+                .ok_or(bad("Filter requires an indexed field"))?;
+            let (kind, text) = match f.kind.as_str() {
+                "string" => (
+                    "text",
+                    value
+                        .as_str()
+                        .filter(|s| s.len() <= 2000)
+                        .ok_or(bad("String filter required"))?
+                        .to_owned(),
+                ),
+                "integer" => (
+                    "bigint",
+                    value
+                        .as_i64()
+                        .ok_or(bad("Integer filter required"))?
+                        .to_string(),
+                ),
+                "boolean" => (
+                    "boolean",
+                    value
+                        .as_bool()
+                        .ok_or(bad("Boolean filter required"))?
+                        .to_string(),
+                ),
+                _ => return Err(bad("Unsupported app filter")),
+            };
+            query
+                .push(format!(" AND {} = ", f.name))
+                .push_bind(text)
+                .push(format!("::{kind}"));
+        }
+    }
+    query
+        .push(" ORDER BY id LIMIT ")
+        .push_bind(limit + 1)
+        .push(") r");
+    let mut tx = a.db.begin().await?;
+    sqlx::query("SELECT set_config('rac.tenant',$1,true)")
+        .bind(t)
+        .execute(&mut *tx)
+        .await?;
+    let rows = query.build().fetch_all(&mut *tx).await?;
+    tx.commit().await?;
+    let has_more = rows.len() > limit as usize;
+    let elements = rows
+        .iter()
+        .take(limit as usize)
+        .map(|r| r.get::<Value, _>("data"))
+        .collect::<Vec<_>>();
+    let next = if has_more {
+        elements.last().and_then(|r| r["id"].as_str())
+    } else {
+        None
+    };
+    Ok(json!({"elements":elements,"limit":limit,"hasMore":has_more,"nextCursor":next}))
+}
+/// A proposal binds one indexed record, including records beyond the first page.
+pub(crate) async fn record_revision(
+    a: &App,
+    t: &str,
+    m: &Manifest,
+    e: &Entity,
+    id: &str,
+) -> Result<i64> {
     if !m.permissions.contains(&"data.read".into()) {
         return Err(Error(StatusCode::FORBIDDEN, "App needs data.read".into()));
     }
@@ -43,25 +152,17 @@ pub(crate) async fn list(a: &App, t: &str, m: &Manifest, e: &Entity) -> Result<V
         .bind(t)
         .execute(&mut *tx)
         .await?;
-    // Select only the installed version's fields; a later tenant's additive columns are private to its contract.
-    let columns = e
-        .fields
-        .iter()
-        .map(|f| f.name.as_str())
-        .collect::<Vec<_>>()
-        .join(",");
     let sql = format!(
-        "SELECT to_jsonb(r) AS data FROM (SELECT id,revision,{columns} FROM public.{} WHERE tenant=$1 ORDER BY id LIMIT 100) r",
+        "SELECT revision FROM public.{} WHERE tenant=$1 AND id=$2",
         table(&m.id, &e.name)
     );
-    let rows = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
+    let revision = sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(sql.as_str()))
         .bind(t)
-        .fetch_all(&mut *tx)
+        .bind(id)
+        .fetch_optional(&mut *tx)
         .await?;
     tx.commit().await?;
-    Ok(
-        json!({"elements":rows.iter().map(|r|r.get::<Value,_>("data")).collect::<Vec<_>>(),"limit":100}),
-    )
+    Ok(revision.unwrap_or(0))
 }
 pub(crate) async fn save(a: &App, t: &str, m: &Manifest, e: &Entity, v: &Value) -> Result<Value> {
     let mut tx = a.db.begin().await?;
@@ -121,6 +222,7 @@ pub(crate) async fn save_tx(
                 match f.kind.as_str() {
                     "integer" => format!("($3->>'{}')::bigint", f.name),
                     "boolean" => format!("($3->>'{}')::boolean", f.name),
+                    "json" => format!("NULLIF($3->'{}','null'::jsonb)", f.name),
                     _ => format!("$3->>'{}'", f.name),
                 }
             }

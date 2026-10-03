@@ -21,6 +21,39 @@ pub(crate) struct Manifest {
     pub actions: Vec<Action>,
     #[serde(default)]
     pub events: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub surfaces: Vec<Surface>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub api_routes: Vec<ApiRoute>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intelligence: Option<IntelligenceContract>,
+}
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct Surface {
+    pub id: String,
+    pub location: String,
+    pub label: HashMap<String, String>,
+    pub ui_path: String,
+    #[serde(default)]
+    pub actions: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permission: Option<String>,
+}
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct ApiRoute {
+    pub path: String,
+    pub method: String,
+    pub scope: String,
+    pub action: String,
+}
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct IntelligenceContract {
+    pub description: HashMap<String, String>,
+    pub tools: Vec<String>,
+    pub entities: Vec<String>,
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

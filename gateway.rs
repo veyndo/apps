@@ -13,7 +13,8 @@ pub(crate) async fn app_tools(a: &App, h: &HeaderMap) -> Result<Vec<Value>> {
         for action in &m.actions {
             if action.public
                 || merchant(a, h).is_ok()
-                    && (!["save", "service", "emit"].contains(&action.handler.as_str())
+                    && (!(["save", "service", "emit"].contains(&action.handler.as_str())
+                        || action.permission.is_some())
                         || auth::permit(h, action.permission.as_deref().unwrap_or("catalog"))
                             .is_ok())
             {
@@ -81,7 +82,7 @@ pub(crate) async fn invoke_app(
         .as_ref()
         .and_then(|n| m.entities.iter().find(|e| e.name == *n));
     match action.handler.as_str() {
-        "list" => data::list(a, &t, &m, e.ok_or(bad("Entity required"))?).await,
+        "list" => data::list_page(a, &t, &m, e.ok_or(bad("Entity required"))?, v).await,
         "save" => data::save(a, &t, &m, e.ok_or(bad("Entity required"))?, v).await,
         "configurations" => {
             merchant(a, h)?;
@@ -128,6 +129,10 @@ pub(crate) async fn service_call(
         return Err(bad("External services are disabled in private sandboxes"));
     }
     // No URL or credential comes from the manifest, merchant, model or event payload.
+    let _permit = a.app_limits.enter(t, id)?;
+    if v.to_string().len() > 65536 {
+        return Err(bad("App request exceeds limit"));
+    }
     let configured: Value = serde_json::from_str(&env::var("APP_SERVICES").unwrap_or("{}".into()))
         .map_err(|_| bad("Invalid operator service configuration"))?;
     let config = &configured[id];

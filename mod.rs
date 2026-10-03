@@ -8,6 +8,11 @@ mod evidence;
 mod evidence_routes;
 pub(crate) use evidence::*;
 mod gateway;
+mod service_limits;
+#[cfg(test)]
+mod surface_tests;
+mod surfaces;
+pub(crate) use service_limits::ServiceLimits;
 mod planning;
 mod runtime;
 pub(crate) use planning::*;

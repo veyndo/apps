@@ -21,8 +21,17 @@ pub(crate) async fn planning_context(a: &App, t: &str) -> Result<Value> {
             serde_json::from_value(row.get("manifest")).map_err(|_| bad("Invalid app package"))?;
         let mut records = vec![];
         if m.permissions.contains(&"data.read".into()) {
-            for e in m.entities.iter().take(4) {
-                let mut data = data::list(a, t, &m, e).await?;
+            for e in m
+                .entities
+                .iter()
+                .filter(|e| {
+                    m.intelligence
+                        .as_ref()
+                        .is_none_or(|ai| ai.entities.contains(&e.name))
+                })
+                .take(4)
+            {
+                let mut data = data::list_page(a, t, &m, e, &json!({"limit":12})).await?;
                 data["elements"] = json!(
                     data["elements"]
                         .as_array()
@@ -33,19 +42,33 @@ pub(crate) async fn planning_context(a: &App, t: &str) -> Result<Value> {
                 );
                 if let Some(rows) = data["elements"].as_array_mut() {
                     for row in rows {
-                        if let Some(fields) = row.as_object_mut() {
-                            for (_, value) in fields {
-                                if let Some(text) = value.as_str() {
-                                    *value = json!(text.chars().take(300).collect::<String>());
-                                }
-                            }
-                        }
+                        *row = bounded_context(row, 0);
                     }
                 }
                 records.push(json!({"entity":e.name,"records":data}));
             }
         }
-        context.push(json!({"app":m.id,"actions":m.actions,"records":records}));
+        let actions = m
+            .actions
+            .iter()
+            .filter(|act| {
+                m.intelligence
+                    .as_ref()
+                    .is_none_or(|ai| ai.tools.contains(&act.name))
+            })
+            .collect::<Vec<_>>();
+        let item =
+            json!({"app":m.id,"actions":actions,"records":records,"intelligence":m.intelligence});
+        if context
+            .iter()
+            .map(|v: &Value| v.to_string().len())
+            .sum::<usize>()
+            + item.to_string().len()
+            > 32768
+        {
+            break;
+        }
+        context.push(item);
     }
     Ok(json!(context))
 }
@@ -80,14 +103,7 @@ pub(crate) async fn bind_change(a: &App, t: &str, c: &mut AppChange) -> Result<(
         .as_str()
         .filter(|s| !s.is_empty() && s.len() <= 100)
         .ok_or(bad("App record ID required"))?;
-    let existing = data::list(a, t, &m, e).await?;
-    let revision = existing["elements"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|r| r["id"] == id)
-        .and_then(|r| r["revision"].as_i64())
-        .unwrap_or(0);
+    let revision = data::record_revision(a, t, &m, e, id).await?;
     args["revision"] = json!(revision);
     c.arguments_json = args.to_string();
     c.expected_app_revision = row.get("revision");
@@ -125,4 +141,29 @@ pub(crate) async fn apply_change(
         serde_json::from_str(&c.arguments_json).map_err(|_| bad("Invalid app arguments"))?;
     data::save_tx(tx, t, &m, e, &args).await?;
     Ok(())
+}
+
+/// App descriptions/records are untrusted data; bound nested JSON before entering a model prompt.
+fn bounded_context(v: &Value, depth: usize) -> Value {
+    if depth >= 4 {
+        return json!("[context depth limit]");
+    }
+    match v {
+        Value::String(s) => json!(s.chars().take(300).collect::<String>()),
+        Value::Array(items) => json!(
+            items
+                .iter()
+                .take(8)
+                .map(|v| bounded_context(v, depth + 1))
+                .collect::<Vec<_>>()
+        ),
+        Value::Object(fields) => Value::Object(
+            fields
+                .iter()
+                .take(16)
+                .map(|(k, v)| (k.clone(), bounded_context(v, depth + 1)))
+                .collect(),
+        ),
+        _ => v.clone(),
+    }
 }

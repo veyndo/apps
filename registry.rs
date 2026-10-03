@@ -151,6 +151,7 @@ pub(crate) async fn install_tx(
                 match f.kind.as_str() {
                     "integer" => "bigint",
                     "boolean" => "boolean",
+                    "json" => "jsonb",
                     _ => "text",
                 }
             };
