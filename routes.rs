@@ -90,6 +90,9 @@ async fn app_install(
                 name: if live { "PayPal" } else { "PayPal Sandbox" }.into(),
                 active: payments::account(&t).is_ok(),
                 business_only: false,
+                translations: HashMap::new(),
+                countries: Vec::new(),
+                restricted_countries: false,
                 mode: "app".into(),
             });
             sqlx::query("UPDATE commerce_settings SET data=$1,revision=revision+1 WHERE tenant=$2")
