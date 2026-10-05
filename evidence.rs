@@ -139,7 +139,7 @@ pub(crate) async fn private_graph(a: &App, t: &str) -> Result<Value> {
             .bind(t)
             .fetch_all(&a.db)
             .await?;
-    let sources=knowledge::cypher(&a.db,"MATCH (s:Shop {tenant:$tenant})-[:HAS_PRIVATE_SOURCE]->(e:AppEvidence {tenant:$tenant}) WHERE e.app IN $active RETURN {app:e.app,sourceId:e.source_id,title:e.title,kind:e.kind} LIMIT 100",json!({"tenant":t,"active":active})).await?;
-    let products=knowledge::cypher(&a.db,"MATCH (e:AppEvidence {tenant:$tenant})-[:REFERENCES_PRODUCT]->(p:Product {tenant:$tenant}) WHERE e.app IN $active RETURN {app:e.app,sourceId:e.source_id,productId:p.product_id} LIMIT 100",json!({"tenant":t,"active":active})).await?;
+    let sources:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('app',app,'sourceId',source_id,'title',title,'kind',kind) FROM app_evidence WHERE tenant=$1 AND app=ANY($2) ORDER BY app,source_id LIMIT 100").bind(t).bind(&active).fetch_all(&a.db).await?;
+    let products:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('app',r.data->>'app','sourceId',r.data->>'sourceId','productId',p.id) FROM knowledge_relations r JOIN products p ON p.tenant=r.tenant AND p.id=r.target_id JOIN app_evidence e ON e.tenant=r.tenant AND e.app=r.data->>'app' AND e.source_id=r.data->>'sourceId' WHERE r.tenant=$1 AND r.kind='REFERENCES_PRODUCT' AND e.app=ANY($2) ORDER BY e.app,e.source_id,p.id LIMIT 100").bind(t).bind(&active).fetch_all(&a.db).await?;
     Ok(json!({"sources":sources,"productRelations":products,"visibility":"merchant-private"}))
 }
