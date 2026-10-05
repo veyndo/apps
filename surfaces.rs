@@ -42,6 +42,10 @@ pub(crate) fn validate_contract(m: &Manifest) -> Result<()> {
                 "admin.navigation",
                 "admin.order",
                 "admin.product",
+                "admin.product.general",
+                "admin.product.tab",
+                "admin.customer",
+                "admin.order.general",
                 "storefront.page",
                 "storefront.home",
                 "storefront.header",
@@ -148,8 +152,38 @@ async fn registry(a: &App, h: &HeaderMap, public: bool) -> Result<Value> {
             {
                 continue;
             }
-            if let Some(view) = native_views::payload(&m, s) {
-                surfaces.push(json!({"app":m.id,"version":m.version,"surface":s,"native":view,"mainLocale":settings.main_locale,"locales":settings.locales}));
+            if let Some(mut view) = native_views::payload(&m, s) {
+                let allowed = s
+                    .actions
+                    .iter()
+                    .filter(|name| {
+                        m.actions
+                            .iter()
+                            .any(|act| act.name == **name && gateway::action_authorized(a, h, act))
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>();
+                if let Some(blocks) = view["view"]["blocks"].as_array_mut() {
+                    blocks.retain(|b| {
+                        b["kind"] == "text"
+                            || b["readAction"]
+                                .as_str()
+                                .is_some_and(|n| allowed.iter().any(|a| a == n))
+                    });
+                    for b in blocks {
+                        if b["kind"] == "form"
+                            && b["writeAction"]
+                                .as_str()
+                                .is_none_or(|n| !allowed.iter().any(|a| a == n))
+                        {
+                            b["kind"] = json!("cards");
+                            b.as_object_mut().unwrap().remove("writeAction");
+                        }
+                    }
+                }
+                let mut surface = json!(s);
+                surface["actions"] = json!(allowed);
+                surfaces.push(json!({"app":m.id,"version":m.version,"surface":surface,"native":view,"mainLocale":settings.main_locale,"locales":settings.locales}));
             } else if let Some(url) = surface_url(&m.id, &s.ui_path) {
                 surfaces.push(json!({"app":m.id,"version":m.version,"surface":s,"url":url}));
             }

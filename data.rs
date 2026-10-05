@@ -33,6 +33,14 @@ pub(crate) fn fields(e: &Entity, v: &Value) -> Result<()> {
                 _ => value.as_str().is_some_and(|s| s.len() <= 2000),
             }
         };
+        if !f.choices.is_empty()
+            && !f
+                .choices
+                .iter()
+                .any(|c| value.as_str() == Some(c.value.as_str()))
+        {
+            return Err(bad(format!("Unknown choice for {}", f.name)));
+        }
         if !ok {
             return Err(bad(format!("Invalid field {}", f.name)));
         }
@@ -183,6 +191,7 @@ pub(crate) async fn save_tx(
         return Err(Error(StatusCode::FORBIDDEN, "App needs data.write".into()));
     }
     fields(e, &v["fields"])?;
+    super::editor_contract::validate_references(tx, t, e, &v["fields"]).await?;
     if e.fields.iter().any(|f| f.translatable) {
         super::native_data::validate_languages(tx, t, e, &v["fields"]).await?;
     }
@@ -273,6 +282,8 @@ mod tests {
                 required: true,
                 indexed: false,
                 references: None,
+                core_reference: None,
+                choices: vec![],
             }],
         };
         assert!(fields(&e, &json!({"fee":200})).is_ok());

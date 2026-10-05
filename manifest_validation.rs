@@ -47,6 +47,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             return Err(bad("Invalid entity"));
         }
         let mut fields = std::collections::HashSet::new();
+        super::editor_contract::validate_fields(e)?;
         for f in &e.fields {
             if !identifier(&f.name)
                 || ["tenant", "id", "revision"].contains(&f.name.as_str())
@@ -90,6 +91,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
                 .as_deref()
                 .is_some_and(|p| !auth::SCOPES.contains(&p))
             || (a.handler == "emit" && !m.permissions.contains(&"events.publish".into()))
+            || (a.public && a.permission.is_some())
             || (a.handler == "emit" && a.public)
             || (a.handler == "emit" && a.read_only)
             || a.input_schema["type"] != "object"
@@ -145,6 +147,8 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             "Event subscriptions require service runtime and events.read",
         ));
     }
+    schedules::validate(m)?;
+    webhooks::validate(m)?;
     surfaces::validate_contract(m)?;
     native_views::validate(m)?;
     Ok(())

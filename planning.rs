@@ -8,7 +8,7 @@ pub(crate) struct AppChange {
     #[serde(default)]
     pub expected_app_revision: i64,
 }
-pub(crate) async fn planning_context(a: &App, t: &str) -> Result<Value> {
+pub(crate) async fn planning_context(a: &App, t: &str, h: &HeaderMap) -> Result<Value> {
     let rows = sqlx::query(
         "SELECT manifest FROM app_packages WHERE tenant=$1 AND active ORDER BY id LIMIT 8",
     )
@@ -25,7 +25,12 @@ pub(crate) async fn planning_context(a: &App, t: &str) -> Result<Value> {
                 .entities
                 .iter()
                 .filter(|e| {
-                    m.intelligence
+                    m.actions.iter().any(|act| {
+                        act.handler == "list"
+                            && act.entity.as_deref() == Some(e.name.as_str())
+                            && gateway::action_authorized(a, h, act)
+                    }) && m
+                        .intelligence
                         .as_ref()
                         .is_none_or(|ai| ai.entities.contains(&e.name))
                 })
@@ -52,13 +57,21 @@ pub(crate) async fn planning_context(a: &App, t: &str) -> Result<Value> {
             .actions
             .iter()
             .filter(|act| {
-                m.intelligence
-                    .as_ref()
-                    .is_none_or(|ai| ai.tools.contains(&act.name))
+                gateway::action_authorized(a, h, act)
+                    && m.intelligence
+                        .as_ref()
+                        .is_none_or(|ai| ai.tools.contains(&act.name))
             })
             .collect::<Vec<_>>();
+        let mut intelligence = m.intelligence.clone();
+        if let Some(ai) = &mut intelligence {
+            ai.tools
+                .retain(|name| actions.iter().any(|act| act.name == *name));
+            ai.entities
+                .retain(|name| records.iter().any(|record| record["entity"] == *name));
+        }
         let item =
-            json!({"app":m.id,"actions":actions,"records":records,"intelligence":m.intelligence});
+            json!({"app":m.id,"actions":actions,"records":records,"intelligence":intelligence});
         if context
             .iter()
             .map(|v: &Value| v.to_string().len())
@@ -72,7 +85,7 @@ pub(crate) async fn planning_context(a: &App, t: &str) -> Result<Value> {
     }
     Ok(json!(context))
 }
-pub(crate) async fn bind_change(a: &App, t: &str, c: &mut AppChange) -> Result<()> {
+pub(crate) async fn bind_change(a: &App, t: &str, c: &mut AppChange, h: &HeaderMap) -> Result<()> {
     if c.arguments_json.len() > 2000 {
         return Err(bad("App change too large"));
     }
@@ -91,6 +104,7 @@ pub(crate) async fn bind_change(a: &App, t: &str, c: &mut AppChange) -> Result<(
         .iter()
         .find(|a| a.name == c.action && a.handler == "save")
         .ok_or(bad("Planner supports managed save actions only"))?;
+    authorize_planned_action(&m, action, h)?;
     let e = m
         .entities
         .iter()
@@ -113,6 +127,7 @@ pub(crate) async fn apply_change(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     t: &str,
     c: &AppChange,
+    h: &HeaderMap,
 ) -> Result<()> {
     let row = sqlx::query(
         "SELECT manifest,revision FROM app_packages WHERE tenant=$1 AND id=$2 AND active FOR SHARE",
@@ -132,6 +147,7 @@ pub(crate) async fn apply_change(
         .iter()
         .find(|a| a.name == c.action && a.handler == "save")
         .ok_or(bad("Unknown managed app action"))?;
+    authorize_planned_action(&m, action, h)?;
     let e = m
         .entities
         .iter()
@@ -166,4 +182,15 @@ fn bounded_context(v: &Value, depth: usize) -> Value {
         ),
         _ => v.clone(),
     }
+}
+
+/// A proposal is untrusted model output; both selection and current action rights are checked before binding and committing.
+fn authorize_planned_action(m: &Manifest, action: &Action, h: &HeaderMap) -> Result<()> {
+    if m.intelligence
+        .as_ref()
+        .is_some_and(|ai| !ai.tools.contains(&action.name))
+    {
+        return Err(bad("App action is not selected for merchant planning"));
+    }
+    auth::permit(h, action.permission.as_deref().unwrap_or("catalog"))
 }

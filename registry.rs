@@ -80,6 +80,11 @@ pub(crate) async fn install_tx(
                         && v.kind == f.kind
                         && v.required == f.required
                         && v.references == f.references
+                        && v.core_reference == f.core_reference
+                        && (!f.choices.is_empty() || v.choices.is_empty())
+                        && f.choices
+                            .iter()
+                            .all(|c| v.choices.iter().any(|n| n.value == c.value))
                         && v.translatable == f.translatable
                 }) {
                     return Err(conflict(
@@ -103,6 +108,7 @@ pub(crate) async fn install_tx(
                         && (current.kind != f.kind
                             || current.required != f.required
                             || current.references != f.references
+                            || current.core_reference != f.core_reference
                             || current.translatable != f.translatable)
                     {
                         return Err(conflict("Shared app column contract cannot change"));
@@ -232,5 +238,6 @@ pub(crate) async fn install_tx(
             .await?;
         }
     }
+    schedules::sync(tx, t, &m).await?;
     Ok(json!({"installed":true,"id":m.id,"version":m.version,"digest":digest}))
 }

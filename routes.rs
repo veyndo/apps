@@ -2,6 +2,7 @@
 use super::*;
 pub(crate) fn app_router() -> Router<App> {
     Router::new()
+        .merge(super::webhooks::router())
         .merge(evidence_routes::router())
         .merge(surfaces::router())
         .route("/store-api/apps/analytics.js", get(analytics_sdk))
@@ -142,6 +143,7 @@ async fn entity_list(
         .iter()
         .find(|e| e.name == name)
         .ok_or(bad("Unknown entity"))?;
+    super::editor_contract::entity_access(&m, e, &h, "list")?;
     let input = json!({"limit":q.get("limit").map(|s| s.parse::<i64>()).transpose().map_err(|_| bad("Invalid app limit"))?,"after":q.get("after"),"filter":q.get("filter").map(|s| serde_json::from_str::<Value>(s)).transpose().map_err(|_| bad("Invalid app filter"))?});
     let mut input = input;
     if input["filter"].is_null() {
@@ -163,6 +165,7 @@ async fn entity_save(
         .iter()
         .find(|e| e.name == name)
         .ok_or(bad("Unknown entity"))?;
+    super::editor_contract::entity_access(&m, e, &h, "save")?;
     Ok(Json(data::save(&a, &t, &m, e, &v).await?))
 }
 async fn slots(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {

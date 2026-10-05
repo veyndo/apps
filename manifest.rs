@@ -31,6 +31,10 @@ pub(crate) struct Manifest {
     pub intelligence: Option<IntelligenceContract>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub views: Vec<super::native_views::NativeView>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub schedules: Vec<super::schedules::AppSchedule>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub webhooks: Vec<super::webhooks::AppWebhook>,
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -96,6 +100,16 @@ pub(crate) struct Field {
     pub indexed: bool,
     #[serde(default)]
     pub references: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub core_reference: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub choices: Vec<Choice>,
+}
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct Choice {
+    pub value: String,
+    pub label: HashMap<String, String>,
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -120,6 +134,8 @@ pub(crate) struct Action {
     pub flow_allowed: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub permission: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mcp: Option<bool>,
 }
 pub(crate) fn identifier(s: &str) -> bool {
     !s.is_empty()

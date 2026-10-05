@@ -21,3 +21,11 @@ This folder owns the Rust modules listed below. Each source begins with its resp
 - [`surfaces.rs](surfaces.rs): App-owned UI surfaces and namespaced HTTP routes reuse the authorized action gateway.
 
 The [source inventory](../../docs/module-inventory.md) is checked in CI. [The behavioral map](../../docs/source-map.md) identifies integration suites, and [testing](../../docs/testing.md) describes actual coverage and limits. Every file is limited to 320 lines; `main.rs` to 120.
+
+- `editor_contract.rs`, `editor_tests.rs`: owned core references, context/choice/privacy validation and direct-route scope checks.
+- `schedules.rs`: transactional UTC emit ticks, persistent clock receipts and private-stage exclusion.
+- `webhooks.rs`: exact-byte HMAC verification, typed ingress and durable replay receipts.
+- `native_views.rs`, `native_data.rs`, `native_view_tests.rs`: bounded native binding contracts, action handlers and validation cases.
+- `presentation.rs`: declared artwork and local category fallbacks.
+
+[Guided app contracts](../../docs/app-assistants.md).

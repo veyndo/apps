@@ -11,13 +11,10 @@ pub(crate) async fn app_tools(a: &App, h: &HeaderMap) -> Result<Vec<Value>> {
         let m: Manifest =
             serde_json::from_value(r.get("manifest")).map_err(|_| bad("Invalid package"))?;
         for action in &m.actions {
-            if action.public
-                || merchant(a, h).is_ok()
-                    && (!(["save", "service", "emit"].contains(&action.handler.as_str())
-                        || action.permission.is_some())
-                        || auth::permit(h, action.permission.as_deref().unwrap_or("catalog"))
-                            .is_ok())
-            {
+            if verified_kernel::app_tool_admissible(
+                action.mcp != Some(false),
+                action_authorized(a, h, action),
+            ) {
                 tools.push(json!({"name":format!("app.{}.{}",m.id,action.name),"description":action.description,"inputSchema":action.input_schema,"annotations":{"readOnlyHint":(action.read_only || ["list","configurations"].contains(&action.handler.as_str()))}}));
             }
         }
@@ -183,4 +180,40 @@ pub(crate) fn ui_url(id: &str) -> Option<String> {
     } else {
         None
     }
+}
+
+/// MCP opt-out applies to discovery and direct invocation, without disabling the UI/HTTP action.
+pub(crate) async fn invoke_mcp(
+    a: &App,
+    h: &HeaderMap,
+    id: &str,
+    name: &str,
+    v: &Value,
+) -> Result<Value> {
+    let m = package(a, &tenant(h)?, id, true).await?;
+    if m.actions
+        .iter()
+        .find(|act| act.name == name)
+        .is_none_or(|act| {
+            !verified_kernel::app_tool_admissible(
+                act.mcp != Some(false),
+                action_authorized(a, h, act),
+            )
+        })
+    {
+        return Err(Error(
+            StatusCode::NOT_FOUND,
+            "App MCP tool not exposed".into(),
+        ));
+    }
+    invoke_app(a, h, id, name, v).await
+}
+
+/// The registry uses the same live permission check as direct actions.
+pub(super) fn action_authorized(a: &App, h: &HeaderMap, action: &Action) -> bool {
+    action.public
+        || merchant(a, h).is_ok()
+            && (!(["save", "service", "emit"].contains(&action.handler.as_str())
+                || action.permission.is_some())
+                || auth::permit(h, action.permission.as_deref().unwrap_or("catalog")).is_ok())
 }

@@ -21,16 +21,23 @@ pub(crate) struct NativeBlock {
     pub read_action: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub write_action: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_binding: Option<ContextBinding>,
+}
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct ContextBinding {
+    pub field: String,
+    pub key: String,
 }
 pub(super) fn is_native(m: &Manifest, s: &Surface) -> bool {
-    m.runtime == "declarative"
-        && m.views
-            .iter()
-            .any(|v| s.ui_path == format!("native/{}", v.id))
+    m.views
+        .iter()
+        .any(|v| s.ui_path == format!("native/{}", v.id))
 }
 pub(super) fn validate(m: &Manifest) -> Result<()> {
     let mut views = std::collections::HashSet::new();
-    if m.views.len() > 16 || (!m.views.is_empty() && m.runtime != "declarative") {
+    if m.views.len() > 16 {
         return Err(bad("Native view limit/runtime invalid"));
     }
     for v in &m.views {
@@ -53,7 +60,11 @@ pub(super) fn validate(m: &Manifest) -> Result<()> {
                 return Err(bad("Invalid native block"));
             }
             if b.kind == "text" {
-                if b.entity.is_some() || b.read_action.is_some() || b.write_action.is_some() {
+                if b.entity.is_some()
+                    || b.read_action.is_some()
+                    || b.write_action.is_some()
+                    || b.context_binding.is_some()
+                {
                     return Err(bad("Text cannot bind actions"));
                 }
                 continue;
@@ -62,6 +73,7 @@ pub(super) fn validate(m: &Manifest) -> Result<()> {
             if !m.entities.iter().any(|e| &e.name == entity) {
                 return Err(bad("Unknown block entity"));
             }
+            super::editor_contract::validate_binding(m, &v.id, b)?;
             for (name, handler) in [(&b.read_action, "list"), (&b.write_action, "save")] {
                 if let Some(name) = name {
                     if !m.actions.iter().any(|a| {
