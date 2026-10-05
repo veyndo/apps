@@ -50,7 +50,7 @@ pub(crate) fn validate_contract(m: &Manifest) -> Result<()> {
                 "account.overview",
             ]
             .contains(&s.location.as_str())
-            || m.runtime != "service"
+            || (m.runtime != "service" && !native_views::is_native(m, s))
             || !m.permissions.iter().any(|p| {
                 p == if private {
                     "admin.slot"
@@ -130,6 +130,7 @@ async fn registry(a: &App, h: &HeaderMap, public: bool) -> Result<Value> {
     if !public {
         merchant(a, h)?;
     }
+    let (settings, _) = commerce::config(a, &tenant(h)?).await?;
     let rows =
         sqlx::query("SELECT manifest FROM app_packages WHERE tenant=$1 AND active ORDER BY id")
             .bind(tenant(h)?)
@@ -147,7 +148,9 @@ async fn registry(a: &App, h: &HeaderMap, public: bool) -> Result<Value> {
             {
                 continue;
             }
-            if let Some(url) = surface_url(&m.id, &s.ui_path) {
+            if let Some(view) = native_views::payload(&m, s) {
+                surfaces.push(json!({"app":m.id,"version":m.version,"surface":s,"native":view,"mainLocale":settings.main_locale,"locales":settings.locales}));
+            } else if let Some(url) = surface_url(&m.id, &s.ui_path) {
                 surfaces.push(json!({"app":m.id,"version":m.version,"surface":s,"url":url}));
             }
         }

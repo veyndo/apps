@@ -18,6 +18,10 @@ mod runtime;
 pub(crate) use planning::*;
 mod manifest;
 mod manifest_validation;
+mod native_data;
+#[cfg(test)]
+mod native_view_tests;
+mod native_views;
 pub(crate) use manifest_validation::validate;
 mod registry;
 mod routes;

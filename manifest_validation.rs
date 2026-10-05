@@ -145,5 +145,6 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
         ));
     }
     surfaces::validate_contract(m)?;
+    native_views::validate(m)?;
     Ok(())
 }

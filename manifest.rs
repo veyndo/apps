@@ -27,6 +27,8 @@ pub(crate) struct Manifest {
     pub api_routes: Vec<ApiRoute>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub intelligence: Option<IntelligenceContract>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub views: Vec<super::native_views::NativeView>,
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

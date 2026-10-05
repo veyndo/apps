@@ -16,10 +16,12 @@ pub(crate) fn fields(e: &Entity, v: &Value) -> Result<()> {
         let ok = if f.translatable {
             value.as_object().is_some_and(|o| {
                 !o.is_empty()
-                    && o.keys()
-                        .all(|k| ["en", "de", "fr", "es"].contains(&k.as_str()))
+                    && o.len() <= 100
+                    && o.keys().all(|k| {
+                        k.len() <= 35 && k.bytes().all(|b| b.is_ascii_alphabetic() || b == b'-')
+                    })
                     && o.values()
-                        .all(|v| v.as_str().is_some_and(|s| s.len() <= 2000))
+                        .all(|v| v.is_null() || v.as_str().is_some_and(|s| s.len() <= 2000))
             })
         } else {
             match f.kind.as_str() {
@@ -181,6 +183,9 @@ pub(crate) async fn save_tx(
         return Err(Error(StatusCode::FORBIDDEN, "App needs data.write".into()));
     }
     fields(e, &v["fields"])?;
+    if e.fields.iter().any(|f| f.translatable) {
+        super::native_data::validate_languages(tx, t, e, &v["fields"]).await?;
+    }
     if let Some(c) = &m.configuration
         && c.entity == e.name
         && let Some(fee) = v["fields"][&c.price_field].as_i64()
