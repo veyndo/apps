@@ -1,6 +1,7 @@
 //! Package capability, schema and action validation; no executable behavior is inferred from names.
 use super::*;
 pub(crate) fn validate(m: &Manifest) -> Result<()> {
+    presentation::validate(m.presentation.as_ref())?;
     if m.category
         .as_deref()
         .is_some_and(|c| !["commerce", "payment", "api", "ai", "design", "operations"].contains(&c))

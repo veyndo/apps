@@ -18,9 +18,10 @@ pub(crate) fn app_router() -> Router<App> {
 }
 async fn app_list(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
     let t = merchant(&a, &h)?;
+    let (config, _) = commerce::config(&a, &t).await?;
     let rows=sqlx::query("SELECT id,version,manifest,active,revision,digest FROM app_packages WHERE tenant=$1 ORDER BY id").bind(t).fetch_all(&a.db).await?;
     Ok(Json(
-        json!({"apiVersion":"1","packages":rows.iter().map(|r|json!({"id":r.get::<String,_>("id"),"version":r.get::<String,_>("version"),"manifest":r.get::<Value,_>("manifest"),"uiUrl":gateway::ui_url(&r.get::<String,_>("id")),"active":r.get::<bool,_>("active"),"revision":r.get::<i64,_>("revision"),"digest":r.get::<String,_>("digest")})).collect::<Vec<_>>(),"builtIns":["engraving","paypal","shopware_payments","storyfront","google_analytics","gmail","slack","email"],"serviceExecution":"operator-configured external services; no in-process guest code"}),
+        json!({"apiVersion":"1","mainLocale":config.main_locale,"packages":rows.iter().map(|r|json!({"id":r.get::<String,_>("id"),"version":r.get::<String,_>("version"),"manifest":r.get::<Value,_>("manifest"),"uiUrl":gateway::ui_url(&r.get::<String,_>("id")),"active":r.get::<bool,_>("active"),"revision":r.get::<i64,_>("revision"),"digest":r.get::<String,_>("digest")})).collect::<Vec<_>>(),"builtIns":["engraving","paypal","shopware_payments","storyfront","google_analytics","gmail","slack","email"],"serviceExecution":"operator-configured external services; no in-process guest code"}),
     ))
 }
 async fn app_install(

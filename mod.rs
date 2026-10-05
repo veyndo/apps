@@ -22,6 +22,7 @@ mod native_data;
 #[cfg(test)]
 mod native_view_tests;
 mod native_views;
+mod presentation;
 pub(crate) use manifest_validation::validate;
 mod registry;
 mod routes;
