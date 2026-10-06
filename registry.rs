@@ -24,6 +24,7 @@ pub(crate) async fn install_tx(
     m: Manifest,
 ) -> Result<Value> {
     validate(&m)?;
+    crate::payments::install_methods(tx, t, &m).await?;
     if let Some(c) = &m.configuration {
         let entity = m.entities.iter().find(|e| e.name == c.entity).unwrap();
         data::fields(entity, &c.default_fields)?;

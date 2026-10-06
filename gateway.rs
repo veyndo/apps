@@ -85,6 +85,8 @@ pub(crate) async fn invoke_app(
             merchant(a, h)?;
             configurations(a, &t, id).await
         }
+        "payment_command" => crate::payments::app_command(a, h, id, v).await,
+        "payment_onboarding" => crate::payments::onboarding(a, h, id, v).await,
         "service" => {
             if !m.permissions.contains(&"service.call".into()) || m.runtime != "service" {
                 return Err(Error(

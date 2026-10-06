@@ -2,6 +2,7 @@
 use super::*;
 pub(crate) fn validate(m: &Manifest) -> Result<()> {
     presentation::validate(m.presentation.as_ref())?;
+    crate::payments::validate_contract(m)?;
     if m.category
         .as_deref()
         .is_some_and(|c| !["commerce", "payment", "api", "ai", "design", "operations"].contains(&c))
@@ -32,6 +33,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             "events.read",
             "events.publish",
             "knowledge.write",
+            "payments.provider",
         ]
         .contains(&p.as_str())
     }) {
@@ -86,7 +88,16 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
         if !identifier(&a.name)
             || !actions.insert(&a.name)
             || a.description.len() > 300
-            || !["list", "save", "service", "configurations", "emit"].contains(&a.handler.as_str())
+            || ![
+                "list",
+                "save",
+                "service",
+                "configurations",
+                "emit",
+                "payment_onboarding",
+                "payment_command",
+            ]
+            .contains(&a.handler.as_str())
             || a.permission
                 .as_deref()
                 .is_some_and(|p| !auth::SCOPES.contains(&p))
@@ -94,6 +105,17 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             || (a.public && a.permission.is_some())
             || (a.handler == "emit" && a.public)
             || (a.handler == "emit" && a.read_only)
+            || (a.handler == "payment_command"
+                && (a.public
+                    || a.read_only
+                    || a.permission.as_deref() != Some("payments.manage")
+                    || m.payment_provider.is_none()))
+            || (a.handler == "payment_onboarding"
+                && (a.public
+                    || a.read_only
+                    || a.permission.as_deref() != Some("payments.manage")
+                    || m.payment_provider.is_none()
+                    || a.flow_allowed))
             || a.input_schema["type"] != "object"
             || a.input_schema["additionalProperties"] != false
             || (a.handler == "save" && a.public)

@@ -68,6 +68,8 @@ async fn app_install(
     ]
     .contains(&m.id.as_str())
         && text.is_none()
+        // The bundled discovery placeholder can be replaced by the separately deployed provider package.
+        && !(m.id == "shopware_payments" && m.payment_provider.is_some())
     {
         return Err(bad("Built-in app IDs are reserved"));
     }
@@ -96,6 +98,8 @@ async fn app_install(
                 countries: Vec::new(),
                 restricted_countries: false,
                 mode: "app".into(),
+                provider: None,
+                provider_method: None,
             });
             sqlx::query("UPDATE commerce_settings SET data=$1,revision=revision+1 WHERE tenant=$2")
                 .bind(json!(config))

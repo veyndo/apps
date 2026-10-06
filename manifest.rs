@@ -15,6 +15,8 @@ pub(crate) struct Manifest {
     pub permissions: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub configuration: Option<ConfigurationContract>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub payment_provider: Option<crate::payments::ProviderContract>,
     #[serde(default)]
     pub entities: Vec<Entity>,
     #[serde(default)]
