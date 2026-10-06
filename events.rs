@@ -10,7 +10,7 @@ pub(crate) async fn deliver_once(a: &App) -> Result<()> {
     if ids.is_empty() {
         return Ok(());
     }
-    let row=sqlx::query("UPDATE app_deliveries SET state='running',attempts=attempts+1,lease_until=now()+interval '30 seconds' WHERE (tenant,app,event_id)=(SELECT d.tenant,d.app,d.event_id FROM app_deliveries d JOIN app_packages p ON p.tenant=d.tenant AND p.id=d.app AND p.active WHERE d.app=ANY($1) AND d.available_at<=now() AND (d.state='queued' OR d.state='running' AND d.lease_until<now()) ORDER BY d.event_id LIMIT 1 FOR UPDATE OF d SKIP LOCKED) RETURNING tenant,app,event_id,attempts").bind(ids).fetch_optional(&a.db).await?;
+    let row=sqlx::query("UPDATE app_deliveries SET state='running',attempts=attempts+1,lease_until=now()+interval '30 seconds' WHERE (tenant,app,event_id)=(SELECT d.tenant,d.app,d.event_id FROM app_deliveries d JOIN app_packages p ON p.tenant=d.tenant AND p.id=d.app AND p.active WHERE EXISTS(SELECT 1 FROM tenants t WHERE t.id=coalesce((SELECT live_tenant FROM shop_environments WHERE tenant=d.tenant),d.tenant) AND t.status='active') AND d.app=ANY($1) AND d.available_at<=now() AND (d.state='queued' OR d.state='running' AND d.lease_until<now()) ORDER BY d.event_id LIMIT 1 FOR UPDATE OF d SKIP LOCKED) RETURNING tenant,app,event_id,attempts").bind(ids).fetch_optional(&a.db).await?;
     let Some(r) = row else {
         return Ok(());
     };

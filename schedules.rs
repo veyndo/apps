@@ -69,7 +69,7 @@ pub(super) async fn sync(
 pub(crate) async fn schedule_once(a: &App) -> Result<()> {
     let mut tx = a.db.begin().await?;
     // Lock the package as well: deactivation/release cannot race an old schedule into the live outbox.
-    let rows=sqlx::query("SELECT s.tenant,s.app,s.id,s.definition,s.next_run::text AS due FROM app_schedules s JOIN app_packages p ON p.tenant=s.tenant AND p.id=s.app WHERE p.active AND NOT EXISTS(SELECT 1 FROM shop_environments e WHERE e.tenant=s.tenant) AND s.next_run<=now() AND s.definition->>'enabled'='true' ORDER BY s.next_run LIMIT 32 FOR UPDATE OF s,p SKIP LOCKED").fetch_all(&mut *tx).await?;
+    let rows=sqlx::query("SELECT s.tenant,s.app,s.id,s.definition,s.next_run::text AS due FROM app_schedules s JOIN app_packages p ON p.tenant=s.tenant AND p.id=s.app WHERE p.active AND EXISTS(SELECT 1 FROM tenants t WHERE t.id=coalesce((SELECT live_tenant FROM shop_environments WHERE tenant=s.tenant),s.tenant) AND t.status='active') AND NOT EXISTS(SELECT 1 FROM shop_environments e WHERE e.tenant=s.tenant) AND s.next_run<=now() AND s.definition->>'enabled'='true' ORDER BY s.next_run LIMIT 32 FOR UPDATE OF s,p SKIP LOCKED").fetch_all(&mut *tx).await?;
     for r in rows {
         let t = r.get::<String, _>("tenant");
         let app = r.get::<String, _>("app");
