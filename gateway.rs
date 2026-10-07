@@ -140,12 +140,12 @@ pub(crate) async fn service_call(
         "App service is not configured".into(),
     ))?;
     let parsed = reqwest::Url::parse(url).map_err(|_| bad("Invalid service URL"))?;
-    if parsed.scheme() != "https"
-        && !(parsed.scheme() == "http"
-            && ["127.0.0.1", "localhost"].contains(&parsed.host_str().unwrap_or("")))
-    {
+    if !service_policy::allowed(
+        &parsed,
+        &env::var("APP_SERVICE_PRIVATE_ORIGINS").unwrap_or_default(),
+    ) {
         return Err(bad(
-            "Service requires HTTPS or explicit loopback development URL",
+            "Service requires HTTPS, loopback or an explicitly approved private origin",
         ));
     }
     let response = a

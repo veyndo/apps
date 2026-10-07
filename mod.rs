@@ -15,6 +15,7 @@ mod evidence_routes;
 pub(crate) use evidence::*;
 mod gateway;
 mod service_limits;
+mod service_policy;
 #[cfg(test)]
 mod surface_tests;
 mod surfaces;

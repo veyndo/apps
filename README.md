@@ -11,6 +11,7 @@ This folder owns the Rust modules listed below. Each source begins with its resp
 - [`evidence.rs`](evidence.rs): Private provenance-bearing app exports feed merchant retrieval and durable app events; never public PDP answers.
 - [`evidence_routes.rs`](evidence_routes.rs): Scoped merchant-only evidence retrieval; sources never enter public product answers.
 - [`gateway.rs`](gateway.rs): One permission-aware action gateway serves HTTP, UI and MCP; service egress is operator configured.
+- [`service_policy.rs`](service_policy.rs): Exact operator-owned transport admission; the extracted predicate rejects unsafe URLs and unapproved HTTP origins.
 - [`manifest.rs`](manifest.rs): Strict package contract; identifiers and limits are checked before any schema DDL.
 - [`manifest_validation.rs`](manifest_validation.rs): Package capability, schema and action validation; no executable behavior is inferred from names.
 - [`mod.rs`](mod.rs): Versioned app packages: managed data, UI slots, agent tools and isolated service calls.
