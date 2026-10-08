@@ -2,6 +2,9 @@
 use super::*;
 pub(crate) fn validate(m: &Manifest) -> Result<()> {
     presentation::validate(m.presentation.as_ref())?;
+    schema_changes::validate(m)?;
+    distribution::validate(m)?;
+    commerce_hooks::validate(m)?;
     crate::payments::validate_contract(m)?;
     if m.category
         .as_deref()
@@ -32,10 +35,29 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             "service.call",
             "events.read",
             "events.publish",
+            "events.send",
             "knowledge.write",
             "payments.provider",
+            "orders.read",
+            "customers.read",
+            "products.read",
+            "products.write",
+            "jobs.read",
+            "jobs.write",
+            "commerce.hooks",
+            "assets.read",
+            "assets.write",
         ]
         .contains(&p.as_str())
+            && !p.strip_prefix("events:").is_some_and(|v| {
+                v == "self"
+                    || (!v.is_empty()
+                        && v.len() <= 100
+                        && v.bytes().all(|b| {
+                            b.is_ascii_alphanumeric() || b == b'_' || b == b'.' || b == b'*'
+                        }))
+            })
+            && p != "customers.pii"
     }) {
         return Err(bad("Unknown app permission"));
     }
@@ -50,16 +72,29 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
         }
         let mut fields = std::collections::HashSet::new();
         super::editor_contract::validate_fields(e)?;
+        field_values::contract(e)?;
         for f in &e.fields {
-            if !identifier(&f.name)
+            if (f.kind == "relations"
+                && (f.references.is_none()
+                    || f.translatable
+                    || f.indexed
+                    || f.unique
+                    || f.core_reference.is_some()
+                    || !f.choices.is_empty()))
+                || !identifier(&f.name)
                 || ["tenant", "id", "revision"].contains(&f.name.as_str())
                 || !fields.insert(&f.name)
-                || !["string", "integer", "boolean", "json"].contains(&f.kind.as_str())
-                || (f.kind == "json" && (f.indexed || f.references.is_some()))
-                || (f.translatable && (f.kind != "string" || f.references.is_some()))
-                || f.references
-                    .as_ref()
-                    .is_some_and(|r| f.kind != "string" || !m.entities.iter().any(|e| e.name == *r))
+                || !field_values::KINDS.contains(&f.kind.as_str())
+                || (field_values::json(f)
+                    && (f.indexed || f.unique || (f.references.is_some() && f.kind != "relations")))
+                || (f.translatable
+                    && (f.kind != "string" || (f.references.is_some() && f.kind != "relations")))
+                || f.references.as_ref().is_some_and(|r| {
+                    !matches!(f.kind.as_str(), "string" | "relations")
+                        || !m.entities.iter().any(|target| {
+                            target.name == *r && (!e.public_read || target.public_read)
+                        })
+                })
             {
                 return Err(bad("Invalid field or entity relationship"));
             }
@@ -72,6 +107,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             || c.record.is_empty()
             || c.record.len() > 100
             || c.wasm_source.len() > 32768
+            || Sandbox::component_source(&c.wasm_source)
             || !m.permissions.contains(&"data.read".into())
             || !m.permissions.contains(&"data.write".into())
             || !m.entities.iter().any(|e| {
@@ -85,6 +121,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
     }
     let mut actions = std::collections::HashSet::new();
     for a in &m.actions {
+        input_schema::validate_contract(&a.input_schema)?;
         if !identifier(&a.name)
             || !actions.insert(&a.name)
             || a.description.len() > 300
@@ -96,6 +133,10 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
                 "emit",
                 "payment_onboarding",
                 "payment_command",
+                "job",
+                "assets",
+                "asset_preview",
+                "asset_upload",
             ]
             .contains(&a.handler.as_str())
             || a.permission
@@ -103,6 +144,15 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
                 .is_some_and(|p| !auth::SCOPES.contains(&p))
             || (a.handler == "emit" && !m.permissions.contains(&"events.publish".into()))
             || (a.public && a.permission.is_some())
+            || (a.handler == "job"
+                && (a.public
+                    || a.read_only
+                    || m.runtime != "service"
+                    || !m.permissions.iter().any(|p| p == "jobs.write")
+                    || !m
+                        .events
+                        .iter()
+                        .any(|e| e == &format!("app.{}.job_{}", m.id, a.name))))
             || (a.handler == "emit" && a.public)
             || (a.handler == "emit" && a.read_only)
             || (a.handler == "payment_command"
@@ -117,6 +167,12 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
                     || m.payment_provider.is_none()
                     || a.flow_allowed))
             || a.input_schema["type"] != "object"
+            || (["assets", "asset_preview", "asset_upload"].contains(&a.handler.as_str())
+                && (a.public
+                    || (a.handler != "asset_upload" && !a.read_only)
+                    || !m.permissions.iter().any(|p| p == "assets.read")
+                    || a.handler == "asset_upload"
+                        && (!m.permissions.iter().any(|p| p == "assets.write") || a.read_only)))
             || a.input_schema["additionalProperties"] != false
             || (a.handler == "save" && a.public)
             || (a.handler == "configurations" && a.public)
@@ -158,17 +214,15 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
         event.len() > 100
             || !event
                 .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'.')
+                .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'.' || b == b'*')
     }) {
         return Err(bad("Invalid app event name"));
     }
-    if !m.events.is_empty()
-        && (!m.permissions.contains(&"events.read".into()) || m.runtime != "service")
-    {
-        return Err(bad(
-            "Event subscriptions require service runtime and events.read",
-        ));
+    if !m.events.is_empty() && m.runtime != "service" {
+        return Err(bad("Event subscriptions require service runtime"));
     }
+    event_projection::validate(m)?;
+    event_contract::validate(m)?;
     schedules::validate(m)?;
     webhooks::validate(m)?;
     surfaces::validate_contract(m)?;

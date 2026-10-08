@@ -23,7 +23,36 @@ pub(crate) async fn install_tx(
     t: &str,
     m: Manifest,
 ) -> Result<Value> {
+    install_inner(tx, t, m, true).await
+}
+pub(crate) async fn install_preview(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    t: &str,
+    m: Manifest,
+) -> Result<Value> {
+    let private: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM shop_environments WHERE tenant=$1 AND preview_owner IS NOT NULL)").bind(t).fetch_one(&mut **tx).await?;
+    if !private {
+        return Err(bad(
+            "Mutable app preview requires a personal preview environment",
+        ));
+    }
+    install_inner(tx, t, m, false).await
+}
+async fn install_inner(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    t: &str,
+    m: Manifest,
+    versions: bool,
+) -> Result<Value> {
     validate(&m)?;
+    approval::installation(&m)?;
+    if let Some(c) = &m.commerce_hooks {
+        let guest = runtime::prepare_source(c.source.clone()).await?;
+        tokio::task::spawn_blocking(move || guest.validate_component_abi())
+            .await
+            .map_err(|_| bad("Component validation failed"))?
+            .map_err(bad)?;
+    }
     crate::payments::install_methods(tx, t, &m).await?;
     if let Some(c) = &m.configuration {
         let entity = m.entities.iter().find(|e| e.name == c.entity).unwrap();
@@ -33,29 +62,38 @@ pub(crate) async fn install_tx(
             .ok_or(bad("Default price required"))?;
         runtime::validate_fee(c, fee).await?;
     }
-    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,7))")
-        .bind(&m.id)
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,543))")
+        .bind(t)
         .execute(&mut **tx)
         .await?;
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,7))")
+        .bind(format!("{t}:{}", m.id))
+        .execute(&mut **tx)
+        .await?;
+    distribution::dependencies(tx, t, &m).await?;
+    commerce_hooks::admission(tx, t, &m).await?;
     let value = json!(m);
     let digest = hash(&value.to_string());
-    if let Some(old) =
-        sqlx::query("SELECT digest FROM app_versions WHERE tenant=$1 AND app=$2 AND version=$3")
-            .bind(t)
-            .bind(&m.id)
-            .bind(&m.version)
-            .fetch_optional(&mut **tx)
-            .await?
+    if versions
+        && let Some(old) =
+            sqlx::query("SELECT digest FROM app_versions WHERE tenant=$1 AND app=$2 AND version=$3")
+                .bind(t)
+                .bind(&m.id)
+                .bind(&m.version)
+                .fetch_optional(&mut **tx)
+                .await?
         && old.get::<String, _>("digest") != digest
     {
         return Err(conflict("Published app version is immutable"));
     }
-    // Versions can coexist across shops; shared physical schemas grow monotonically.
-    if let Some(row) = sqlx::query("SELECT manifest FROM app_packages WHERE tenant=$1 AND id=$2")
-        .bind(t)
-        .bind(&m.id)
-        .fetch_optional(&mut **tx)
-        .await?
+    // Each tenant owns a separate physical schema; only its own versions constrain upgrades.
+    if versions
+        && let Some(row) =
+            sqlx::query("SELECT manifest FROM app_packages WHERE tenant=$1 AND id=$2")
+                .bind(t)
+                .bind(&m.id)
+                .fetch_optional(&mut **tx)
+                .await?
     {
         let old: Manifest = serde_json::from_value(row.get("manifest"))
             .map_err(|_| bad("Invalid prior package"))?;
@@ -69,57 +107,10 @@ pub(crate) async fn install_tx(
                 "Downgrade requires an explicit compatible migration",
             ));
         }
-        for e in old.entities {
-            let next = m
-                .entities
-                .iter()
-                .find(|v| v.name == e.name)
-                .ok_or(conflict("Removing entities requires an explicit migration"))?;
-            for f in e.fields {
-                if !next.fields.iter().any(|v| {
-                    v.name == f.name
-                        && v.kind == f.kind
-                        && v.required == f.required
-                        && v.references == f.references
-                        && v.core_reference == f.core_reference
-                        && (!f.choices.is_empty() || v.choices.is_empty())
-                        && f.choices
-                            .iter()
-                            .all(|c| v.choices.iter().any(|n| n.value == c.value))
-                        && v.translatable == f.translatable
-                }) {
-                    return Err(conflict(
-                        "Changing/removing fields requires an explicit migration",
-                    ));
-                }
-            }
-        }
-    }
-    let versions = sqlx::query("SELECT manifest FROM app_versions WHERE app=$1")
-        .bind(&m.id)
-        .fetch_all(&mut **tx)
-        .await?;
-    for old in versions {
-        let old: Manifest =
-            serde_json::from_value(old.get("manifest")).map_err(|_| bad("Invalid prior schema"))?;
-        for e in old.entities {
-            if let Some(next) = m.entities.iter().find(|v| v.name == e.name) {
-                for f in e.fields {
-                    if let Some(current) = next.fields.iter().find(|v| v.name == f.name)
-                        && (current.kind != f.kind
-                            || current.required != f.required
-                            || current.references != f.references
-                            || current.core_reference != f.core_reference
-                            || current.translatable != f.translatable)
-                    {
-                        return Err(conflict("Shared app column contract cannot change"));
-                    }
-                }
-            }
-        }
+        schema_upgrade::upgrade(tx, t, &old, &m).await?;
     }
     for e in &m.entities {
-        let name = table(&m.id, &e.name);
+        let name = table(t, &m.id, &e.name);
         let exists: bool = sqlx::query_scalar("SELECT to_regclass($1) IS NOT NULL")
             .bind(format!("public.{name}"))
             .fetch_one(&mut **tx)
@@ -152,29 +143,21 @@ pub(crate) async fn install_tx(
                     "New required field needs a data migration; add it nullable first",
                 ));
             }
-            let kind = if f.translatable {
-                "jsonb"
-            } else {
-                match f.kind.as_str() {
-                    "integer" => "bigint",
-                    "boolean" => "boolean",
-                    "json" => "jsonb",
-                    _ => "text",
-                }
-            };
+            let kind = field_values::sql_kind(f);
             let ddl = format!(
                 "ALTER TABLE public.{name} ADD COLUMN IF NOT EXISTS {} {kind} {}",
-                f.name,
+                column(&f.name),
                 if f.required { "NOT NULL" } else { "" }
             );
             sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
                 .execute(&mut **tx)
                 .await?;
-            if f.indexed {
+            if f.indexed || f.unique {
                 let ddl = format!(
-                    "CREATE INDEX IF NOT EXISTS idx_{} ON public.{name}(tenant,{})",
-                    &hash(&format!("{name}:{}", f.name))[..20],
-                    f.name
+                    "CREATE {} INDEX IF NOT EXISTS idx_{} ON public.{name}(tenant,{})",
+                    if f.unique { "UNIQUE" } else { "" },
+                    &hash(&format!("{name}:{}:{}", f.name, f.unique))[..20],
+                    column(&f.name)
                 );
                 sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
                     .execute(&mut **tx)
@@ -184,8 +167,13 @@ pub(crate) async fn install_tx(
     }
     for e in &m.entities {
         for f in &e.fields {
-            if let Some(target) = &f.references {
-                let name = table(&m.id, &e.name);
+            let target = if matches!(f.kind.as_str(), "image" | "file") {
+                Some("product_assets".to_owned())
+            } else {
+                f.references.as_ref().map(|target| table(t, &m.id, target))
+            };
+            if let Some(target) = target.filter(|_| f.kind != "relations") {
+                let name = table(t, &m.id, &e.name);
                 let constraint = format!("fk_{}", &hash(&format!("{name}:{}", f.name))[..20]);
                 let exists: bool = sqlx::query_scalar(
                     "SELECT EXISTS(SELECT 1 FROM pg_constraint WHERE conname=$1)",
@@ -196,8 +184,8 @@ pub(crate) async fn install_tx(
                 if !exists {
                     let ddl = format!(
                         "ALTER TABLE public.{name} ADD CONSTRAINT {constraint} FOREIGN KEY(tenant,{}) REFERENCES public.{}(tenant,id)",
-                        f.name,
-                        table(&m.id, target)
+                        column(&f.name),
+                        target
                     );
                     sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
                         .execute(&mut **tx)
@@ -206,17 +194,21 @@ pub(crate) async fn install_tx(
             }
         }
     }
-    sqlx::query("INSERT INTO app_versions(tenant,app,version,digest,manifest) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING").bind(t).bind(&m.id).bind(&m.version).bind(&digest).bind(&value).execute(&mut **tx).await?;
+    relations::install(tx, t, &m).await?;
+    if versions {
+        sqlx::query("INSERT INTO app_versions(tenant,app,version,digest,manifest) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING").bind(t).bind(&m.id).bind(&m.version).bind(&digest).bind(&value).execute(&mut **tx).await?;
+    }
     sqlx::query("INSERT INTO app_packages(tenant,id,version,manifest,digest) VALUES($1,$2,$3,$4,$5) ON CONFLICT(tenant,id) DO UPDATE SET version=EXCLUDED.version,manifest=EXCLUDED.manifest,digest=EXCLUDED.digest,active=true,revision=app_packages.revision+1").bind(t).bind(&m.id).bind(&m.version).bind(value).bind(&digest).execute(&mut **tx).await?;
     sqlx::query("INSERT INTO outbox(tenant,kind,data) VALUES($1,'app.installed',$2)")
         .bind(t)
         .bind(json!({"app":m.id,"version":m.version,"digest":digest}))
         .execute(&mut **tx)
         .await?;
+    storage::attach(tx, t, &m).await?;
     if let Some(c) = &m.configuration {
         let sql = format!(
             "SELECT EXISTS(SELECT 1 FROM public.{} WHERE tenant=$1 AND id=$2)",
-            table(&m.id, &c.entity)
+            table(t, &m.id, &c.entity)
         );
         sqlx::query("SELECT set_config('rac.tenant',$1,true)")
             .bind(t)

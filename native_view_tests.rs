@@ -55,3 +55,21 @@ fn empty_native_views_do_not_change_legacy_serialization() {
     .unwrap();
     assert!(json!(m).get("views").is_none());
 }
+
+#[test]
+fn form_geometry_and_presentation_are_validated_on_the_server() {
+    let mut m = example();
+    m.views[0].layout = "form".into();
+    m.views[0].blocks[0].geometry = Some(form_layout::Geometry {
+        x: 0,
+        y: 0,
+        w: 6,
+        h: 6,
+    });
+    validate(&m).unwrap();
+    m.views[0].blocks[0].geometry.as_mut().unwrap().x = 11;
+    assert!(validate(&m).is_err());
+    m.views[0].blocks[0].geometry.as_mut().unwrap().x = 0;
+    m.views[0].blocks[0].tab_order = Some(1001);
+    assert!(validate(&m).is_err());
+}

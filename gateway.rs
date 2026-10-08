@@ -22,33 +22,7 @@ pub(crate) async fn app_tools(a: &App, h: &RequestContext) -> Result<Vec<Value>>
     Ok(tools)
 }
 pub(crate) fn validate_input(schema: &Value, v: &Value) -> Result<()> {
-    let object = v.as_object().ok_or(bad("Action input must be an object"))?;
-    let props = schema["properties"]
-        .as_object()
-        .ok_or(bad("Action needs properties"))?;
-    if object.keys().any(|k| !props.contains_key(k)) {
-        return Err(bad("Unknown action argument"));
-    }
-    if schema["required"].as_array().is_some_and(|keys| {
-        keys.iter()
-            .any(|k| k.as_str().is_none_or(|s| !object.contains_key(s)))
-    }) {
-        return Err(bad("Required action argument missing"));
-    }
-    for (key, value) in object {
-        let kind = props[key]["type"].as_str().unwrap_or("");
-        let ok = match kind {
-            "string" => value.is_string(),
-            "integer" => value.as_i64().is_some(),
-            "object" => value.is_object(),
-            "boolean" => value.is_boolean(),
-            _ => false,
-        };
-        if !ok {
-            return Err(bad("Action argument type mismatch"));
-        }
-    }
-    Ok(())
+    input_schema::validate(schema, v)
 }
 pub(crate) async fn invoke_app(
     a: &App,
@@ -57,6 +31,16 @@ pub(crate) async fn invoke_app(
     name: &str,
     v: &Value,
 ) -> Result<Value> {
+    let start = std::time::Instant::now();
+    let result = execute(a, h, id, name, v).await;
+    let status = result
+        .as_ref()
+        .map(|_| StatusCode::OK)
+        .unwrap_or_else(|e| e.0);
+    observability::record(a, h, id, name, v, status, start.elapsed().as_millis()).await;
+    result
+}
+async fn execute(a: &App, h: &RequestContext, id: &str, name: &str, v: &Value) -> Result<Value> {
     let t = tenant(h)?;
     let m = package(a, &t, id, true).await?;
     let action = m
@@ -68,10 +52,20 @@ pub(crate) async fn invoke_app(
         merchant(a, h)?;
     }
     if !action.public
-        && (["save", "service", "emit"].contains(&action.handler.as_str())
+        && (["save", "service", "emit", "job"].contains(&action.handler.as_str())
             || action.permission.is_some())
     {
-        auth::permit(h, action.permission.as_deref().unwrap_or("catalog"))?;
+        auth::permit(
+            h,
+            action
+                .permission
+                .as_deref()
+                .unwrap_or(if action.handler == "job" {
+                    "apps.manage"
+                } else {
+                    "catalog"
+                }),
+        )?;
     }
     validate_input(&action.input_schema, v)?;
     if let Some(result) = super::hosted::action(a, &t, id, name).await? {
@@ -82,6 +76,13 @@ pub(crate) async fn invoke_app(
         .as_ref()
         .and_then(|n| m.entities.iter().find(|e| e.name == *n));
     match action.handler.as_str() {
+        "assets" | "asset_preview" => {
+            auth::permit(h, "catalog.read")?;
+            assets::app_file_callback(a, h, &action.handler, v).await
+        }
+        "asset_upload" => Err(bad(
+            "Asset uploads require the bounded multipart surface endpoint",
+        )),
         "list" => data::list_page(a, &t, &m, e.ok_or(bad("Entity required"))?, v).await,
         "save" => data::save(a, &t, &m, e.ok_or(bad("Entity required"))?, v).await,
         "configurations" => {
@@ -103,6 +104,7 @@ pub(crate) async fn invoke_app(
             }
             Ok(result)
         }
+        "job" => jobs::enqueue(a, h, &m, action, v).await,
         "emit" => {
             if v.to_string().len() > 16384 {
                 return Err(bad("App event exceeds limit"));
@@ -127,6 +129,16 @@ pub(crate) async fn service_call(
     path: &str,
     v: &Value,
 ) -> Result<Value> {
+    service_call_pinned(a, t, id, path, v, None).await
+}
+pub(super) async fn service_call_pinned(
+    a: &App,
+    t: &str,
+    id: &str,
+    path: &str,
+    v: &Value,
+    digest: Option<&str>,
+) -> Result<Value> {
     if crate::staging::parent(a, t).await?.is_some() {
         return Err(bad("External services are disabled in private sandboxes"));
     }
@@ -139,6 +151,16 @@ pub(crate) async fn service_call(
     }
     let configured = &crate::runtime_config::get().services;
     let config = &configured[id];
+    let manifest = package(a, t, id, true).await?;
+    if digest.is_some_and(|d| d != approval::canonical_digest(&manifest)) {
+        return Err(conflict("App package changed before service dispatch"));
+    }
+    if !approval::approved(&manifest, config) {
+        return Err(Error(
+            StatusCode::FORBIDDEN,
+            "Package is not approved for this operator service".into(),
+        ));
+    }
     let url = config["url"].as_str().ok_or(Error(
         StatusCode::SERVICE_UNAVAILABLE,
         "App service is not configured".into(),
@@ -152,11 +174,14 @@ pub(crate) async fn service_call(
             "Service requires HTTPS, loopback or an explicitly approved private origin",
         ));
     }
-    let response = a
-        .http
+    let service_token = secrets::resolve(a, t, &manifest, "service")
+        .await?
+        .unwrap_or_else(|| config["token"].as_str().unwrap_or("").to_owned());
+    let response = egress::client(&parsed)
+        .await?
         .post(format!("{}/{path}", url.trim_end_matches('/')))
         .timeout(std::time::Duration::from_secs(5))
-        .bearer_auth(config["token"].as_str().unwrap_or(""))
+        .bearer_auth(service_token)
         .header("x-tenant", t)
         .json(v)
         .send()
@@ -219,7 +244,18 @@ pub(crate) async fn invoke_mcp(
 pub(super) fn action_authorized(a: &App, h: &RequestContext, action: &Action) -> bool {
     action.public
         || merchant(a, h).is_ok()
-            && (!(["save", "service", "emit"].contains(&action.handler.as_str())
+            && (!(["save", "service", "emit", "job"].contains(&action.handler.as_str())
                 || action.permission.is_some())
-                || auth::permit(h, action.permission.as_deref().unwrap_or("catalog")).is_ok())
+                || auth::permit(
+                    h,
+                    action
+                        .permission
+                        .as_deref()
+                        .unwrap_or(if action.handler == "job" {
+                            "apps.manage"
+                        } else {
+                            "catalog"
+                        }),
+                )
+                .is_ok())
 }

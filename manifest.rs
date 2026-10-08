@@ -11,10 +11,14 @@ pub(crate) struct Manifest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub category: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub distribution: Option<super::distribution::Distribution>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub presentation: Option<super::presentation::Presentation>,
     pub permissions: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub configuration: Option<ConfigurationContract>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commerce_hooks: Option<super::commerce_hooks::Contract>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub payment_provider: Option<crate::payments::ProviderContract>,
     #[serde(default)]
@@ -26,6 +30,10 @@ pub(crate) struct Manifest {
     #[serde(default)]
     pub events: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub event_filters: Vec<event_contract::EventFilter>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event_delivery: Option<event_contract::EventDelivery>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub surfaces: Vec<Surface>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub api_routes: Vec<ApiRoute>,
@@ -35,6 +43,8 @@ pub(crate) struct Manifest {
     pub views: Vec<super::native_views::NativeView>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub schedules: Vec<super::schedules::AppSchedule>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub schema_migrations: Vec<super::schema_changes::Migration>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub webhooks: Vec<super::webhooks::AppWebhook>,
 }
@@ -106,6 +116,10 @@ pub(crate) struct Field {
     pub core_reference: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub choices: Vec<Choice>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub unique: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validation: Option<Value>,
 }
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -146,8 +160,13 @@ pub(crate) fn identifier(s: &str) -> bool {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'_')
         && s.as_bytes()[0].is_ascii_lowercase()
 }
-pub(crate) fn table(app: &str, entity: &str) -> String {
-    format!("app_{}_{}", &hash(app)[..16], entity)
+/// Quote a contract-validated field so SQL keywords remain usable as app field names.
+pub(crate) fn column(name: &str) -> String {
+    debug_assert!(identifier(name));
+    format!("\"{name}\"")
+}
+pub(crate) fn table(tenant: &str, app: &str, entity: &str) -> String {
+    format!("app_{}_{}", &hash(&format!("{tenant}:{app}"))[..24], entity)
 }
 #[cfg(test)]
 mod tests {

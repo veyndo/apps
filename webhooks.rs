@@ -82,12 +82,6 @@ async fn receive(
     let text = std::str::from_utf8(&body).map_err(|_| bad("Webhook JSON must be UTF-8"))?;
     let digest = hash(text);
     let config = &crate::runtime_config::get().webhook_keys;
-    let secret = config[&t][&id].as_str().ok_or_else(denied)?;
-    verify(
-        secret,
-        &format!("{t}\n{id}\n{webhook}\n{stamp}\n{key}\n{digest}"),
-        header("x-app-signature")?,
-    )?;
     if staging::parent(&a, &t).await?.is_some() {
         return Err(bad("Incoming webhooks are disabled in private sandboxes"));
     }
@@ -103,6 +97,16 @@ async fn receive(
     .ok_or(Error(StatusCode::NOT_FOUND, "App unavailable".into()))?;
     let m: Manifest =
         serde_json::from_value(row.get("manifest")).map_err(|_| bad("Invalid package"))?;
+    let secret = secrets::resolve_tx(&mut tx, &t, &m, "webhook")
+        .await?
+        .or_else(|| config[&t][&id].as_str().map(str::to_owned))
+        .ok_or_else(denied)?;
+    verify(
+        &secret,
+        &format!("{t}\n{id}\n{webhook}\n{stamp}\n{key}\n{digest}"),
+        header("x-app-signature")?,
+    )?;
+
     let w = m
         .webhooks
         .iter()

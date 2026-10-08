@@ -26,6 +26,7 @@ pub(crate) async fn configure(a: &App, h: &RequestContext, id: &str, v: &Value) 
         return Err(bad("Only declared configuration input is accepted"));
     }
     let product = v["productId"].as_str().ok_or(bad("productId required"))?;
+    let guest = runtime::prepare(contract).await?;
     let mut tx = a.db.begin().await?;
     sqlx::query("SELECT set_config('rac.tenant',$1,true)")
         .bind(&t)
@@ -52,8 +53,8 @@ pub(crate) async fn configure(a: &App, h: &RequestContext, id: &str, v: &Value) 
     }
     let sql = format!(
         "SELECT {},revision FROM public.{} WHERE tenant=$1 AND id=$2 FOR SHARE",
-        contract.price_field,
-        table(id, &contract.entity)
+        column(&contract.price_field),
+        table(&t, id, &contract.entity)
     );
     let rule = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
         .bind(&t)
@@ -61,7 +62,8 @@ pub(crate) async fn configure(a: &App, h: &RequestContext, id: &str, v: &Value) 
         .fetch_optional(&mut *tx)
         .await?
         .ok_or(bad("App configuration data missing"))?;
-    let fee = runtime::contribution(
+    let fee = runtime::prepared_contribution(
+        guest,
         contract,
         rule.get(&*contract.price_field),
         input.chars().count() as i64,
@@ -94,6 +96,7 @@ pub(crate) async fn configure(a: &App, h: &RequestContext, id: &str, v: &Value) 
 pub(crate) async fn validate_configurations(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     c: &StoredCart,
+    prepared: &HashMap<String, std::sync::Arc<Sandbox>>,
 ) -> Result<()> {
     sqlx::query("SELECT set_config('rac.tenant',$1,true)")
         .bind(&c.tenant)
@@ -120,8 +123,8 @@ pub(crate) async fn validate_configurations(
         }
         let sql = format!(
             "SELECT {},revision FROM public.{} WHERE tenant=$1 AND id=$2 FOR SHARE",
-            contract.price_field,
-            table(&config.app, &contract.entity)
+            column(&contract.price_field),
+            table(&c.tenant, &config.app, &contract.entity)
         );
         let r = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
             .bind(&c.tenant)
@@ -129,7 +132,11 @@ pub(crate) async fn validate_configurations(
             .fetch_optional(&mut **tx)
             .await?
             .ok_or(conflict("Configuration rules missing"))?;
-        let fee = runtime::contribution(
+        let fee = runtime::prepared_contribution(
+            prepared
+                .get(&hash(&contract.wasm_source))
+                .cloned()
+                .ok_or(conflict("Cart app modules changed; retry checkout"))?,
             contract,
             r.get(&*contract.price_field),
             config.fields[&contract.input_field]
@@ -144,6 +151,26 @@ pub(crate) async fn validate_configurations(
         }
     }
     Ok(())
+}
+/// Compile before opening checkout locks. Strong Arc references survive cache eviction;
+/// the locked validation above checks the exact current source digest again.
+pub(crate) async fn prepare_configurations(
+    a: &App,
+    c: &StoredCart,
+) -> Result<HashMap<String, std::sync::Arc<Sandbox>>> {
+    let mut prepared = HashMap::new();
+    for config in c.data.app_configurations.values() {
+        let m = package(a, &c.tenant, &config.app, true).await?;
+        let contract = m
+            .configuration
+            .as_ref()
+            .ok_or(conflict("App configuration missing"))?;
+        let digest = hash(&contract.wasm_source);
+        if let std::collections::hash_map::Entry::Vacant(e) = prepared.entry(digest) {
+            e.insert(runtime::prepare(contract).await?);
+        }
+    }
+    Ok(prepared)
 }
 pub(crate) async fn configurations(a: &App, t: &str, id: &str) -> Result<Value> {
     let rows=sqlx::query("SELECT id,data->'cart'->'lineItems' AS items FROM orders WHERE tenant=$1 AND data->'cart'->'lineItems' @? '$[*].configuration' ORDER BY created_at DESC LIMIT 100").bind(t).fetch_all(&a.db).await?;

@@ -11,7 +11,11 @@ pub(super) async fn validate_languages(
         .fetch_one(&mut **tx)
         .await?;
     let settings = commerce::decode_config(data)?;
-    for f in e.fields.iter().filter(|f| f.translatable) {
+    for f in e
+        .fields
+        .iter()
+        .filter(|f| f.translatable || f.kind == "richtext")
+    {
         let Some(map) = fields[&f.name].as_object() else {
             continue;
         };
@@ -22,6 +26,19 @@ pub(super) async fn validate_languages(
                 .any(|l| l == k || l.split('-').next() == Some(k.as_str()))
         }) {
             return Err(bad("App translation language is not enabled for this shop"));
+        }
+        if f.kind == "richtext" {
+            if f.required
+                && fields[&f.name][&settings.main_locale]
+                    .as_array()
+                    .or_else(|| {
+                        fields[&f.name][settings.main_locale.split('-').next().unwrap()].as_array()
+                    })
+                    .is_none()
+            {
+                return Err(bad("Required rich field needs main-language content"));
+            }
+            continue;
         }
         if f.required
             && fields[&f.name][&settings.main_locale]

@@ -4,7 +4,16 @@ pub(crate) fn app_router() -> Router<App> {
     Router::new()
         .merge(super::webhooks::router())
         .merge(evidence_routes::router())
+        .merge(observability::router())
         .merge(surfaces::router())
+        .merge(surface_grants::router())
+        .merge(ui_bundles::router())
+        .merge(credentials::router())
+        .merge(consent::router())
+        .merge(secrets::router())
+        .merge(core_callbacks::router())
+        .merge(asset_surfaces::router())
+        .merge(jobs::router())
         .route("/store-api/apps/analytics.js", get(analytics_sdk))
         .secure_route(
             "/api/apps",
@@ -42,7 +51,7 @@ async fn app_list(State(a): State<App>, h: RequestContext) -> Result<Json<Value>
             let connected: Vec<&Value> = connections.iter().filter(|f| f["appId"] == id).collect();
             json!({
                 "id":id, "version":r.get::<String,_>("version"),
-                "manifest":r.get::<Value,_>("manifest"), "uiUrl":gateway::ui_url(&id),
+                "manifest":r.get::<Value,_>("manifest"), "uiUrl":serde_json::from_value::<Manifest>(r.get("manifest")).ok().filter(|m|approval::approved(m,&crate::runtime_config::get().services[&id])).and_then(|_|gateway::ui_url(&id)),
                 "active":r.get::<bool,_>("active"), "revision":r.get::<i64,_>("revision"),
                 "digest":r.get::<String,_>("digest"), "connections":connected,
                 "managedBy":if connected.is_empty() { None } else { Some("experience") }
@@ -52,7 +61,7 @@ async fn app_list(State(a): State<App>, h: RequestContext) -> Result<Json<Value>
     Ok(Json(json!({
         "apiVersion":"1", "mainLocale":config.main_locale, "packages":packages,
         "builtIns":["engraving","paypal","shopware_payments","storyfront","google_analytics","gmail","slack","email"],
-        "serviceExecution":"operator-configured external services; no in-process guest code"
+        "serviceExecution":"digest-approved external services and bounded typed Wasm commerce hooks"
     })))
 }
 async fn app_install(
@@ -62,47 +71,8 @@ async fn app_install(
 ) -> Result<Json<Value>> {
     auth::permit(&h, "users")?;
     let t = merchant(&a, &h)?;
-    let text = match v["builtIn"].as_str() {
-        Some("engraving") => Some(include_str!(
-            "../../extensions/apps/engraving/manifest.json"
-        )),
-        Some("storyfront") => Some(include_str!(
-            "../../extensions/apps/storyfront/manifest.json"
-        )),
-        Some("paypal") => Some(include_str!("../../extensions/apps/paypal/manifest.json")),
-        Some("shopware_payments") => Some(include_str!(
-            "../../extensions/apps/shopware-payments/manifest.json"
-        )),
-        Some("google_analytics") => Some(include_str!(
-            "../../extensions/apps/google-analytics/manifest.json"
-        )),
-        Some("gmail") => Some(include_str!("../../extensions/apps/gmail/manifest.json")),
-        Some("email") => Some(include_str!("../../extensions/apps/email/manifest.json")),
-        Some("slack") => Some(include_str!("../../extensions/apps/slack/manifest.json")),
-        _ => None,
-    };
-    let m: Manifest = if let Some(s) = text {
-        serde_json::from_str(s).map_err(|_| bad("Invalid built-in"))?
-    } else {
-        serde_json::from_value(v["manifest"].clone()).map_err(|e| bad(e.to_string()))?
-    };
-    if [
-        "engraving",
-        "paypal",
-        "shopware_payments",
-        "storyfront",
-        "google_analytics",
-        "gmail",
-        "slack",
-        "email",
-    ]
-    .contains(&m.id.as_str())
-        && text.is_none()
-        // The bundled discovery placeholder can be replaced by the separately deployed provider package.
-        && !(m.id == "shopware_payments" && m.payment_provider.is_some())
-    {
-        return Err(bad("Built-in app IDs are reserved"));
-    }
+    let m = consent::decode(&v)?;
+    consent::approved(&h, &m, &v)?;
     let result = install(&a, &t, m).await?;
     if v["builtIn"] == "paypal" {
         let mut tx = a.db.begin().await?;
@@ -152,6 +122,10 @@ async fn app_state(
     let active = v["active"].as_bool().ok_or(bad("active required"))?;
     let mut tx = a.db.begin().await?;
     crate::marketing::lock_config(&mut tx, &t).await?;
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,543))")
+        .bind(&t)
+        .execute(&mut *tx)
+        .await?;
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,7))")
         .bind(&id)
         .execute(&mut *tx)
@@ -168,6 +142,16 @@ async fn app_state(
         return Err(conflict(
             "App is required by connected frontends; disconnect them first",
         ));
+    }
+    if active {
+        let m = package(&a, &t, &id, false).await?;
+        consent::actor_permissions(&h, &m)?;
+        approval::installation(&m)?;
+        distribution::dependencies(&mut tx, &t, &m).await?;
+        commerce_hooks::admission(&mut tx, &t, &m).await?;
+    }
+    if !active {
+        distribution::deactivate(&mut tx, &t, &id).await?;
     }
     let changed=sqlx::query("UPDATE app_packages SET active=$1,revision=revision+1 WHERE tenant=$2 AND id=$3 AND revision=$4").bind(active).bind(t).bind(id).bind(v["revision"].as_i64().ok_or(bad("revision required"))?).execute(&mut *tx).await?.rows_affected();
     if changed != 1 {

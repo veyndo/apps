@@ -126,7 +126,7 @@ pub(crate) fn validate_contract(m: &Manifest) -> Result<()> {
     }
     Ok(())
 }
-fn surface_url(id: &str, path: &str) -> Option<String> {
+pub(super) fn surface_url(id: &str, path: &str) -> Option<String> {
     let mut url = reqwest::Url::parse(&gateway::ui_url(id)?).ok()?;
     let base = url.path().trim_end_matches('/');
     let next = format!("{base}/{path}");
@@ -170,7 +170,9 @@ async fn registry(a: &App, h: &RequestContext, public: bool) -> Result<Value> {
                     .collect::<Vec<_>>();
                 if let Some(blocks) = view["view"]["blocks"].as_array_mut() {
                     blocks.retain(|b| {
-                        b["kind"] == "text"
+                        ["text", "button", "frame", "tabs"]
+                            .iter()
+                            .any(|kind| b["kind"] == *kind)
                             || b["readAction"]
                                 .as_str()
                                 .is_some_and(|n| allowed.iter().any(|a| a == n))
@@ -186,10 +188,13 @@ async fn registry(a: &App, h: &RequestContext, public: bool) -> Result<Value> {
                         }
                     }
                 }
+                view["tenant"] = json!(tenant(h)?);
                 let mut surface = json!(s);
                 surface["actions"] = json!(allowed);
                 surfaces.push(json!({"app":m.id,"version":m.version,"surface":surface,"native":view,"mainLocale":settings.main_locale,"locales":settings.locales}));
-            } else if let Some(url) = surface_url(&m.id, &s.ui_path) {
+            } else if approval::approved(&m, &crate::runtime_config::get().services[&m.id])
+                && let Some(url) = surface_url(&m.id, &s.ui_path)
+            {
                 surfaces.push(json!({"app":m.id,"version":m.version,"surface":s,"url":url}));
             }
         }
