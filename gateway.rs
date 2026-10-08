@@ -74,6 +74,9 @@ pub(crate) async fn invoke_app(
         auth::permit(h, action.permission.as_deref().unwrap_or("catalog"))?;
     }
     validate_input(&action.input_schema, v)?;
+    if let Some(result) = super::hosted::action(a, &t, id, name).await? {
+        return Ok(result);
+    }
     let e = action
         .entity
         .as_ref()

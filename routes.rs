@@ -20,10 +20,27 @@ pub(crate) fn app_router() -> Router<App> {
 async fn app_list(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
     let t = merchant(&a, &h)?;
     let (config, _) = commerce::config(&a, &t).await?;
+    let connections = hosted::connections(&a, &t).await?;
     let rows=sqlx::query("SELECT id,version,manifest,active,revision,digest FROM app_packages WHERE tenant=$1 ORDER BY id").bind(t).fetch_all(&a.db).await?;
-    Ok(Json(
-        json!({"apiVersion":"1","mainLocale":config.main_locale,"packages":rows.iter().map(|r|json!({"id":r.get::<String,_>("id"),"version":r.get::<String,_>("version"),"manifest":r.get::<Value,_>("manifest"),"uiUrl":gateway::ui_url(&r.get::<String,_>("id")),"active":r.get::<bool,_>("active"),"revision":r.get::<i64,_>("revision"),"digest":r.get::<String,_>("digest")})).collect::<Vec<_>>(),"builtIns":["engraving","paypal","shopware_payments","storyfront","google_analytics","gmail","slack","email"],"serviceExecution":"operator-configured external services; no in-process guest code"}),
-    ))
+    let packages: Vec<Value> = rows
+        .iter()
+        .map(|r| {
+            let id: String = r.get("id");
+            let connected: Vec<&Value> = connections.iter().filter(|f| f["appId"] == id).collect();
+            json!({
+                "id":id, "version":r.get::<String,_>("version"),
+                "manifest":r.get::<Value,_>("manifest"), "uiUrl":gateway::ui_url(&id),
+                "active":r.get::<bool,_>("active"), "revision":r.get::<i64,_>("revision"),
+                "digest":r.get::<String,_>("digest"), "connections":connected,
+                "managedBy":if connected.is_empty() { None } else { Some("experience") }
+            })
+        })
+        .collect();
+    Ok(Json(json!({
+        "apiVersion":"1", "mainLocale":config.main_locale, "packages":packages,
+        "builtIns":["engraving","paypal","shopware_payments","storyfront","google_analytics","gmail","slack","email"],
+        "serviceExecution":"operator-configured external services; no in-process guest code"
+    })))
 }
 async fn app_install(
     State(a): State<App>,
@@ -120,10 +137,30 @@ async fn app_state(
     auth::permit(&h, "users")?;
     let t = merchant(&a, &h)?;
     let active = v["active"].as_bool().ok_or(bad("active required"))?;
-    let changed=sqlx::query("UPDATE app_packages SET active=$1,revision=revision+1 WHERE tenant=$2 AND id=$3 AND revision=$4").bind(active).bind(t).bind(id).bind(v["revision"].as_i64().ok_or(bad("revision required"))?).execute(&a.db).await?.rows_affected();
+    let mut tx = a.db.begin().await?;
+    crate::marketing::lock_config(&mut tx, &t).await?;
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,7))")
+        .bind(&id)
+        .execute(&mut *tx)
+        .await?;
+    if !active
+        && sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM hosted_frontends WHERE tenant=$1 AND app_id=$2)",
+        )
+        .bind(&t)
+        .bind(&id)
+        .fetch_one(&mut *tx)
+        .await?
+    {
+        return Err(conflict(
+            "App is required by connected frontends; disconnect them first",
+        ));
+    }
+    let changed=sqlx::query("UPDATE app_packages SET active=$1,revision=revision+1 WHERE tenant=$2 AND id=$3 AND revision=$4").bind(active).bind(t).bind(id).bind(v["revision"].as_i64().ok_or(bad("revision required"))?).execute(&mut *tx).await?.rows_affected();
     if changed != 1 {
         return Err(conflict("App revision changed"));
     }
+    tx.commit().await?;
     Ok(Json(json!({"active":active,"dataRetained":true})))
 }
 async fn app_action(

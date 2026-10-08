@@ -14,6 +14,7 @@ mod evidence;
 mod evidence_routes;
 pub(crate) use evidence::*;
 mod gateway;
+pub(crate) mod hosted;
 mod service_limits;
 mod service_policy;
 #[cfg(test)]
