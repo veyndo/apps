@@ -1,11 +1,15 @@
 //! Scoped merchant-only evidence retrieval; sources never enter public product answers.
 use super::*;
 pub(crate) fn router() -> Router<App> {
-    Router::new().route("/api/knowledge/external", get(list))
+    Router::new().secure_route(
+        "/api/knowledge/external",
+        &[("GET", "knowledge.read")],
+        get(list),
+    )
 }
 async fn list(
     State(a): State<App>,
-    h: HeaderMap,
+    h: RequestContext,
     axum::extract::Query(v): axum::extract::Query<HashMap<String, String>>,
 ) -> Result<Json<Value>> {
     let t = merchant(&a, &h)?;

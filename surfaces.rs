@@ -3,10 +3,15 @@ use super::*;
 use axum::extract::{OriginalUri, Query};
 pub(crate) fn router() -> Router<App> {
     Router::new()
-        .route("/api/apps/surfaces", get(admin_surfaces))
+        .secure_route(
+            "/api/apps/surfaces",
+            &[("GET", "catalog.read")],
+            get(admin_surfaces),
+        )
         .route("/store-api/apps/surfaces", get(public_surfaces))
-        .route(
+        .secure_route(
             "/api/apps/{id}/http/{route}",
+            &[("GET", "read"), ("POST", "read")],
             get(read_route).post(write_route),
         )
         .route(
@@ -130,7 +135,7 @@ fn surface_url(id: &str, path: &str) -> Option<String> {
     url.set_fragment(None);
     Some(url.to_string())
 }
-async fn registry(a: &App, h: &HeaderMap, public: bool) -> Result<Value> {
+async fn registry(a: &App, h: &RequestContext, public: bool) -> Result<Value> {
     if !public {
         merchant(a, h)?;
     }
@@ -191,15 +196,15 @@ async fn registry(a: &App, h: &HeaderMap, public: bool) -> Result<Value> {
     }
     Ok(json!({"surfaces":surfaces}))
 }
-async fn admin_surfaces(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
+async fn admin_surfaces(State(a): State<App>, h: RequestContext) -> Result<Json<Value>> {
     Ok(Json(registry(&a, &h, false).await?))
 }
-async fn public_surfaces(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
+async fn public_surfaces(State(a): State<App>, h: RequestContext) -> Result<Json<Value>> {
     Ok(Json(registry(&a, &h, true).await?))
 }
 async fn dispatch(
     a: &App,
-    h: &HeaderMap,
+    h: &RequestContext,
     id: &str,
     route: &str,
     method: &str,
@@ -228,7 +233,7 @@ async fn dispatch(
 }
 async fn read_route(
     State(a): State<App>,
-    h: HeaderMap,
+    h: RequestContext,
     OriginalUri(uri): OriginalUri,
     Path((id, route)): Path<(String, String)>,
     Query(query): Query<HashMap<String, String>>,
@@ -276,7 +281,7 @@ async fn read_route(
 }
 async fn write_route(
     State(a): State<App>,
-    h: HeaderMap,
+    h: RequestContext,
     OriginalUri(uri): OriginalUri,
     Path((id, route)): Path<(String, String)>,
     Json(v): Json<Value>,

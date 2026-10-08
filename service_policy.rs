@@ -1,7 +1,7 @@
 //! Operator-owned private origins permit isolated service networking without relaxing public egress.
 use reqwest::Url;
 
-pub(super) fn allowed(url: &Url, private_origins: &str) -> bool {
+pub(crate) fn allowed(url: &Url, private_origins: &str) -> bool {
     let private_origin = private_origins.split(',').any(|entry| {
         Url::parse(entry.trim()).is_ok_and(|origin| {
             origin.scheme() == "http"

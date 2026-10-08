@@ -12,7 +12,7 @@ pub(crate) struct Configuration {
     pub entity: String,
     pub record: String,
 }
-pub(crate) async fn configure(a: &App, h: &HeaderMap, id: &str, v: &Value) -> Result<Value> {
+pub(crate) async fn configure(a: &App, h: &RequestContext, id: &str, v: &Value) -> Result<Value> {
     let t = tenant(h)?;
     let m = package(a, &t, id, true).await?;
     let contract = m.configuration.as_ref().ok_or(bad(

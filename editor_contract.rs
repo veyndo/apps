@@ -90,7 +90,12 @@ pub(super) fn validate_binding(
     Ok(())
 }
 /// The generic entity endpoint cannot bypass stricter action permissions.
-pub(super) fn entity_access(m: &Manifest, e: &Entity, h: &HeaderMap, handler: &str) -> Result<()> {
+pub(super) fn entity_access(
+    m: &Manifest,
+    e: &Entity,
+    h: &RequestContext,
+    handler: &str,
+) -> Result<()> {
     for action in m
         .actions
         .iter()

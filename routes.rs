@@ -6,18 +6,31 @@ pub(crate) fn app_router() -> Router<App> {
         .merge(evidence_routes::router())
         .merge(surfaces::router())
         .route("/store-api/apps/analytics.js", get(analytics_sdk))
-        .route("/api/apps", get(app_list).post(app_install))
-        .route("/api/apps/{id}", axum::routing::put(app_state))
-        .route("/api/apps/{id}/actions/{action}", post(app_action))
+        .secure_route(
+            "/api/apps",
+            &[("GET", "catalog.read"), ("POST", "apps.manage")],
+            get(app_list).post(app_install),
+        )
+        .secure_route(
+            "/api/apps/{id}",
+            &[("PUT", "apps.manage")],
+            axum::routing::put(app_state),
+        )
+        .secure_route(
+            "/api/apps/{id}/actions/{action}",
+            &[("POST", "read")],
+            post(app_action),
+        )
         .route("/store-api/apps/{id}/actions/{action}", post(app_action))
-        .route(
+        .secure_route(
             "/api/apps/{id}/entities/{entity}",
+            &[("GET", "catalog.read"), ("POST", "apps.manage")],
             get(entity_list).post(entity_save),
         )
         .route("/store-api/apps/slots", get(slots))
         .route("/store-api/apps/{id}/configure", post(configure_action))
 }
-async fn app_list(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
+async fn app_list(State(a): State<App>, h: RequestContext) -> Result<Json<Value>> {
     let t = merchant(&a, &h)?;
     let (config, _) = commerce::config(&a, &t).await?;
     let connections = hosted::connections(&a, &t).await?;
@@ -44,7 +57,7 @@ async fn app_list(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
 }
 async fn app_install(
     State(a): State<App>,
-    h: HeaderMap,
+    h: RequestContext,
     Json(v): Json<Value>,
 ) -> Result<Json<Value>> {
     auth::permit(&h, "users")?;
@@ -130,7 +143,7 @@ async fn app_install(
 }
 async fn app_state(
     State(a): State<App>,
-    h: HeaderMap,
+    h: RequestContext,
     Path(id): Path<String>,
     Json(v): Json<Value>,
 ) -> Result<Json<Value>> {
@@ -165,7 +178,7 @@ async fn app_state(
 }
 async fn app_action(
     State(a): State<App>,
-    h: HeaderMap,
+    h: RequestContext,
     Path((id, action)): Path<(String, String)>,
     Json(v): Json<Value>,
 ) -> Result<Json<Value>> {
@@ -173,7 +186,7 @@ async fn app_action(
 }
 async fn entity_list(
     State(a): State<App>,
-    h: HeaderMap,
+    h: RequestContext,
     Path((id, name)): Path<(String, String)>,
     axum::extract::Query(q): axum::extract::Query<HashMap<String, String>>,
 ) -> Result<Json<Value>> {
@@ -194,7 +207,7 @@ async fn entity_list(
 }
 async fn entity_save(
     State(a): State<App>,
-    h: HeaderMap,
+    h: RequestContext,
     Path((id, name)): Path<(String, String)>,
     Json(v): Json<Value>,
 ) -> Result<Json<Value>> {
@@ -209,7 +222,7 @@ async fn entity_save(
     super::editor_contract::entity_access(&m, e, &h, "save")?;
     Ok(Json(data::save(&a, &t, &m, e, &v).await?))
 }
-async fn slots(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
+async fn slots(State(a): State<App>, h: RequestContext) -> Result<Json<Value>> {
     let rows = sqlx::query("SELECT manifest FROM app_packages WHERE tenant=$1 AND active")
         .bind(tenant(&h)?)
         .fetch_all(&a.db)
@@ -228,7 +241,7 @@ async fn slots(State(a): State<App>, h: HeaderMap) -> Result<Json<Value>> {
 }
 async fn configure_action(
     State(a): State<App>,
-    h: HeaderMap,
+    h: RequestContext,
     Path(id): Path<String>,
     Json(v): Json<Value>,
 ) -> Result<Json<Value>> {

@@ -1,18 +1,17 @@
 //! Durable at-least-once app events, retry leases and stable event idempotency keys.
 use super::*;
-pub(crate) async fn deliver_once(a: &App) -> Result<()> {
-    let configured: Value = serde_json::from_str(&env::var("APP_SERVICES").unwrap_or("{}".into()))
-        .map_err(|_| bad("Invalid app services"))?;
+pub(crate) async fn deliver_once(a: &App) -> Result<bool> {
+    let configured = &crate::runtime_config::get().services;
     let ids = configured
         .as_object()
         .map(|v| v.keys().cloned().collect::<Vec<_>>())
         .unwrap_or_default();
     if ids.is_empty() {
-        return Ok(());
+        return Ok(false);
     }
     let row=sqlx::query("UPDATE app_deliveries SET state='running',attempts=attempts+1,lease_until=now()+interval '30 seconds' WHERE (tenant,app,event_id)=(SELECT d.tenant,d.app,d.event_id FROM app_deliveries d JOIN app_packages p ON p.tenant=d.tenant AND p.id=d.app AND p.active WHERE EXISTS(SELECT 1 FROM tenants t WHERE t.id=coalesce((SELECT live_tenant FROM shop_environments WHERE tenant=d.tenant),d.tenant) AND t.status='active') AND d.app=ANY($1) AND d.available_at<=now() AND (d.state='queued' OR d.state='running' AND d.lease_until<now()) ORDER BY d.event_id LIMIT 1 FOR UPDATE OF d SKIP LOCKED) RETURNING tenant,app,event_id,attempts").bind(ids).fetch_optional(&a.db).await?;
     let Some(r) = row else {
-        return Ok(());
+        return Ok(false);
     };
     let t = r.get::<String, _>("tenant");
     let app = r.get::<String, _>("app");
@@ -25,7 +24,7 @@ pub(crate) async fn deliver_once(a: &App) -> Result<()> {
     let outcome=gateway::service_call(a,&t,&app,"events",&json!({"idempotencyKey":format!("{t}:{app}:{id}"),"eventId":id,"tenant":t,"kind":event.get::<String,_>("kind"),"data":event.get::<Value,_>("data")})).await;
     let attempt = r.get::<i32, _>("attempts");
     sqlx::query("UPDATE app_deliveries SET state=$1,error=$2,lease_until=NULL,available_at=now()+interval '10 seconds' WHERE tenant=$3 AND app=$4 AND event_id=$5 AND attempts=$6").bind(if outcome.is_ok(){"delivered"}else if attempt>=8{"failed"}else{"queued"}).bind(outcome.err().map(|e|e.1)).bind(t).bind(app).bind(id).bind(attempt).execute(&a.db).await?;
-    Ok(())
+    Ok(true)
 }
 pub(crate) async fn project_events(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,

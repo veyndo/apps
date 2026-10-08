@@ -1,6 +1,6 @@
 //! One permission-aware action gateway serves HTTP, UI and MCP; service egress is operator configured.
 use super::*;
-pub(crate) async fn app_tools(a: &App, h: &HeaderMap) -> Result<Vec<Value>> {
+pub(crate) async fn app_tools(a: &App, h: &RequestContext) -> Result<Vec<Value>> {
     let rows =
         sqlx::query("SELECT manifest FROM app_packages WHERE tenant=$1 AND active ORDER BY id")
             .bind(tenant(h)?)
@@ -52,7 +52,7 @@ pub(crate) fn validate_input(schema: &Value, v: &Value) -> Result<()> {
 }
 pub(crate) async fn invoke_app(
     a: &App,
-    h: &HeaderMap,
+    h: &RequestContext,
     id: &str,
     name: &str,
     v: &Value,
@@ -131,12 +131,13 @@ pub(crate) async fn service_call(
         return Err(bad("External services are disabled in private sandboxes"));
     }
     // No URL or credential comes from the manifest, merchant, model or event payload.
+    let _cluster =
+        crate::performance::cluster_lease::Lease::acquire(a, t, &format!("app:{id}"), 8).await?;
     let _permit = a.app_limits.enter(t, id)?;
     if v.to_string().len() > 65536 {
         return Err(bad("App request exceeds limit"));
     }
-    let configured: Value = serde_json::from_str(&env::var("APP_SERVICES").unwrap_or("{}".into()))
-        .map_err(|_| bad("Invalid operator service configuration"))?;
+    let configured = &crate::runtime_config::get().services;
     let config = &configured[id];
     let url = config["url"].as_str().ok_or(Error(
         StatusCode::SERVICE_UNAVAILABLE,
@@ -145,7 +146,7 @@ pub(crate) async fn service_call(
     let parsed = reqwest::Url::parse(url).map_err(|_| bad("Invalid service URL"))?;
     if !service_policy::allowed(
         &parsed,
-        &env::var("APP_SERVICE_PRIVATE_ORIGINS").unwrap_or_default(),
+        &crate::runtime_config::get().private_service_origins,
     ) {
         return Err(bad(
             "Service requires HTTPS, loopback or an explicitly approved private origin",
@@ -174,7 +175,7 @@ pub(crate) async fn service_call(
 }
 
 pub(crate) fn ui_url(id: &str) -> Option<String> {
-    let configured: Value = serde_json::from_str(&env::var("APP_SERVICES").ok()?).ok()?;
+    let configured = &crate::runtime_config::get().services;
     let url = configured[id]["uiUrl"].as_str()?;
     let parsed = reqwest::Url::parse(url).ok()?;
     if parsed.scheme() == "https"
@@ -190,7 +191,7 @@ pub(crate) fn ui_url(id: &str) -> Option<String> {
 /// MCP opt-out applies to discovery and direct invocation, without disabling the UI/HTTP action.
 pub(crate) async fn invoke_mcp(
     a: &App,
-    h: &HeaderMap,
+    h: &RequestContext,
     id: &str,
     name: &str,
     v: &Value,
@@ -215,7 +216,7 @@ pub(crate) async fn invoke_mcp(
 }
 
 /// The registry uses the same live permission check as direct actions.
-pub(super) fn action_authorized(a: &App, h: &HeaderMap, action: &Action) -> bool {
+pub(super) fn action_authorized(a: &App, h: &RequestContext, action: &Action) -> bool {
     action.public
         || merchant(a, h).is_ok()
             && (!(["save", "service", "emit"].contains(&action.handler.as_str())

@@ -1,8 +1,7 @@
 //! Private provenance-bearing app exports feed merchant retrieval and durable app events; never public PDP answers.
 use super::*;
 pub(crate) async fn collect_sources(a: &App) -> Result<()> {
-    let configured: Value = serde_json::from_str(&env::var("APP_SERVICES").unwrap_or("{}".into()))
-        .map_err(|_| bad("Invalid app services"))?;
+    let configured = &crate::runtime_config::get().services;
     let ids = configured
         .as_object()
         .map(|v| v.keys().cloned().collect::<Vec<_>>())

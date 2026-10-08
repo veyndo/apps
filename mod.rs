@@ -41,3 +41,5 @@ pub(crate) use gateway::{app_tools, invoke_app, invoke_mcp, validate_input};
 pub(crate) use manifest::*;
 pub(crate) use registry::*;
 pub(crate) use routes::*;
+
+pub(crate) use service_policy::allowed as service_origin_allowed;

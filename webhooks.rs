@@ -52,7 +52,7 @@ fn verify(secret: &str, canonical: &str, signature: &str) -> Result<()> {
 async fn receive(
     State(a): State<App>,
     Path((t, id, webhook)): Path<(String, String, String)>,
-    h: HeaderMap,
+    h: RequestContext,
     body: Bytes,
 ) -> Result<Json<Value>> {
     let denied = || {
@@ -81,8 +81,7 @@ async fn receive(
     }
     let text = std::str::from_utf8(&body).map_err(|_| bad("Webhook JSON must be UTF-8"))?;
     let digest = hash(text);
-    let config: Value = serde_json::from_str(&env::var("APP_WEBHOOK_KEYS").unwrap_or("{}".into()))
-        .map_err(|_| bad("Invalid operator webhook configuration"))?;
+    let config = &crate::runtime_config::get().webhook_keys;
     let secret = config[&t][&id].as_str().ok_or_else(denied)?;
     verify(
         secret,
