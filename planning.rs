@@ -69,6 +69,8 @@ pub(crate) async fn planning_context(a: &App, t: &str, h: &RequestContext) -> Re
                 .retain(|name| actions.iter().any(|act| act.name == *name));
             ai.entities
                 .retain(|name| records.iter().any(|record| record["entity"] == *name));
+            ai.ontology
+                .retain(|node| ai.entities.contains(&node.entity));
         }
         let item =
             json!({"app":m.id,"actions":actions,"records":records,"intelligence":intelligence});

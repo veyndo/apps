@@ -2,6 +2,7 @@
 use super::*;
 pub(crate) fn validate(m: &Manifest) -> Result<()> {
     presentation::validate(m.presentation.as_ref())?;
+    ontology::validate(m)?;
     schema_changes::validate(m)?;
     distribution::validate(m)?;
     commerce_hooks::validate(m)?;

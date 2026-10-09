@@ -45,6 +45,7 @@ mod surfaces;
 mod ui_bundles;
 pub(crate) use service_limits::ServiceLimits;
 mod observability;
+mod ontology;
 mod planning;
 mod runtime;
 pub(crate) use planning::*;

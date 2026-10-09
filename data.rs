@@ -100,7 +100,12 @@ pub(crate) async fn list_page(
     } else {
         None
     };
-    Ok(json!({"elements":elements,"limit":limit,"hasMore":has_more,"nextCursor":next}))
+    let mut result =
+        json!({"elements":elements,"limit":limit,"hasMore":has_more,"nextCursor":next});
+    if let Some(graph) = ontology::project(t, m, e, &result["elements"]) {
+        result["ontology"] = graph;
+    }
+    Ok(result)
 }
 /// A proposal binds one indexed record, including records beyond the first page.
 pub(crate) async fn record_revision(
