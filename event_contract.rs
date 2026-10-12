@@ -119,10 +119,7 @@ pub(super) async fn send(a: &App, t: &str, m: &Manifest, payload: &Value) -> Res
     if approval::canonical_digest(&current) != approval::canonical_digest(m) {
         return Err(conflict("Event package changed before dispatch"));
     }
-    let _cluster =
-        crate::performance::cluster_lease::Lease::acquire(a, t, &format!("app:{}", m.id), 8)
-            .await?;
-    let _permit = a.app_limits.enter(t, &m.id)?;
+    let _admission = service_limits::admit(a, t, &m.id).await?;
     let secret = secrets::resolve(a, t, m, "outbound").await?.ok_or(Error(
         StatusCode::SERVICE_UNAVAILABLE,
         "Set an outgoing webhook signing secret before delivery".into(),

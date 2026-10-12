@@ -133,7 +133,7 @@ async fn execute(
             ],
         );
         clean["items"] = json!(
-            result["items"]
+            result["lineItems"]
                 .as_array()
                 .map(|items| items
                     .iter()

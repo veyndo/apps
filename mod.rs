@@ -34,9 +34,10 @@ mod gateway;
 mod input_schema;
 mod job_callbacks;
 mod jobs;
+mod record_lifecycle;
 pub(crate) use approval::print_digest;
 pub(crate) mod hosted;
-mod service_limits;
+pub(crate) mod service_limits;
 mod service_policy;
 mod surface_grants;
 #[cfg(test)]

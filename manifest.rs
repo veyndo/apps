@@ -98,6 +98,8 @@ pub(crate) struct Entity {
     pub fields: Vec<Field>,
     #[serde(default)]
     pub public_read: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workflow: Option<super::record_lifecycle::Workflow>,
 }
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

@@ -196,7 +196,7 @@ fn expression(
             }
         }
         Expression::Object { fields } => {
-            if fields.len() > 32 || fields.keys().any(|n| !identifier(n)) {
+            if fields.len() > 32 || fields.keys().any(|n| !object_key(n)) {
                 return Err(bad("Invalid expression object"));
             }
             for e in fields.values() {
@@ -206,6 +206,15 @@ fn expression(
     };
     Ok(())
 }
+/// API input objects use camelCase as well as schema identifiers; prototype and unbounded keys remain prohibited.
+fn object_key(name: &str) -> bool {
+    !["__proto__", "constructor", "prototype"].contains(&name)
+        && !name.is_empty()
+        && name.len() <= 64
+        && name.as_bytes()[0].is_ascii_alphabetic()
+        && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+}
+
 fn statements(
     m: &Manifest,
     v: &native_views::NativeView,
@@ -292,3 +301,7 @@ fn statements(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "ui_object_key_tests.rs"]
+mod object_key_tests;

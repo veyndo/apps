@@ -29,6 +29,7 @@ pub(super) fn sql_kind(f: &Field) -> &'static str {
     }
 }
 pub(super) fn contract(e: &Entity) -> Result<()> {
+    record_lifecycle::contract(e)?;
     for f in &e.fields {
         if f.unique && (json(f) || f.translatable) {
             return Err(bad("Unique fields must use scalar values"));

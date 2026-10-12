@@ -143,9 +143,7 @@ pub(super) async fn service_call_pinned(
         return Err(bad("External services are disabled in private sandboxes"));
     }
     // No URL or credential comes from the manifest, merchant, model or event payload.
-    let _cluster =
-        crate::performance::cluster_lease::Lease::acquire(a, t, &format!("app:{id}"), 8).await?;
-    let _permit = a.app_limits.enter(t, id)?;
+    let _admission = service_limits::admit(a, t, id).await?;
     if v.to_string().len() > 65536 {
         return Err(bad("App request exceeds limit"));
     }

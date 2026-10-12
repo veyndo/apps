@@ -34,7 +34,7 @@ async fn load(
         &surfaces::surface_url(&id, &s.ui_path).ok_or(bad("App UI URL not configured"))?,
     )
     .map_err(|_| bad("Invalid UI URL"))?;
-    let _permit = a.app_limits.enter(&tenant(&h)?, &id)?;
+    let _admission = service_limits::admit(&a, &tenant(&h)?, &id).await?;
     let mut response = egress::client(&url)
         .await?
         .get(url)

@@ -79,6 +79,7 @@ pub(super) fn set(m: &Manifest, v: &NativeView, target: &str, e: &Expression) ->
             name: "literal".into(),
             label: HashMap::new(),
             public_read: false,
+            workflow: None,
             fields: vec![optional],
         };
         let mut fields = serde_json::Map::new();
