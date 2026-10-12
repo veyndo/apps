@@ -34,6 +34,13 @@ pub(crate) async fn list_page(
     );
     let mut query = sqlx::QueryBuilder::<sqlx::Postgres>::new(prefix);
     query.push_bind(t).push(" AND id > ").push_bind(after);
+    if let Some(id) = input.get("id") {
+        let id = id
+            .as_str()
+            .filter(|s| !s.is_empty() && s.len() <= 100)
+            .ok_or(bad("Invalid app record ID"))?;
+        query.push(" AND id = ").push_bind(id);
+    }
     if let Some(filter) = input.get("filter") {
         let filter = filter
             .as_object()

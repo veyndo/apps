@@ -60,7 +60,7 @@ async fn app_list(State(a): State<App>, h: RequestContext) -> Result<Json<Value>
         .collect();
     Ok(Json(json!({
         "apiVersion":"1", "mainLocale":config.main_locale, "packages":packages,
-        "builtIns":["engraving","paypal","shopware_payments","storyfront","google_analytics","gmail","slack","email"],
+        "builtIns":["marketplaces","engraving","paypal","shopware_payments","storyfront","google_analytics","gmail","slack","email"],
         "serviceExecution":"digest-approved external services and bounded typed Wasm commerce hooks"
     })))
 }

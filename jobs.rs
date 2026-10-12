@@ -126,6 +126,7 @@ async fn control(
                 .find(|a| a.name == row.get::<String, _>("action") && a.handler == "job")
                 .ok_or(conflict("Job action is no longer installed"))?;
             auth::permit(&h, action.permission.as_deref().unwrap_or("apps.manage"))?;
+            gateway::additional_permissions(&h, action)?;
             validate_input(&action.input_schema, &row.get::<Value, _>("input"))?;
             signal(&mut tx, &t, &app, &id, &action.name).await?;
         }

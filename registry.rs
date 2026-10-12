@@ -175,6 +175,7 @@ async fn install_inner(
                         "product" => "products",
                         "customer" => "customers",
                         "order" => "orders",
+                        "salesChannel" => "sales_channels",
                         "b2bCompany" => "b2b_companies",
                         "b2bUnit" => "b2b_units",
                         _ => return Err(bad("Unknown core reference")),

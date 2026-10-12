@@ -154,6 +154,8 @@ pub(crate) struct Action {
     pub flow_allowed: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub permission: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub required_permissions: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mcp: Option<bool>,
 }
@@ -178,7 +180,14 @@ mod tests {
     #[test]
     fn identifiers_cannot_inject_sql() {
         assert!(identifier("engraving"));
-        for s in ["x;drop", "tenant--", "1abc", "x.y", "é"] {
+        for s in [
+            include_str!("../../extensions/apps/marketplaces/manifest.json"),
+            "x;drop",
+            "tenant--",
+            "1abc",
+            "x.y",
+            "é",
+        ] {
             assert!(!identifier(s));
         }
     }

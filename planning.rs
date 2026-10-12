@@ -199,5 +199,6 @@ fn authorize_planned_action(m: &Manifest, action: &Action, h: &RequestContext) -
     {
         return Err(bad("App action is not selected for merchant planning"));
     }
+    gateway::additional_permissions(h, action)?;
     auth::permit(h, action.permission.as_deref().unwrap_or("catalog"))
 }

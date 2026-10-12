@@ -67,6 +67,7 @@ async fn execute(a: &App, h: &RequestContext, id: &str, name: &str, v: &Value) -
                 }),
         )?;
     }
+    additional_permissions(h, action)?;
     validate_input(&action.input_schema, v)?;
     if let Some(result) = super::hosted::action(a, &t, id, name).await? {
         return Ok(result);
@@ -242,6 +243,7 @@ pub(crate) async fn invoke_mcp(
 pub(super) fn action_authorized(a: &App, h: &RequestContext, action: &Action) -> bool {
     action.public
         || merchant(a, h).is_ok()
+            && additional_permissions(h, action).is_ok()
             && (!(["save", "service", "emit", "job"].contains(&action.handler.as_str())
                 || action.permission.is_some())
                 || auth::permit(
@@ -256,4 +258,12 @@ pub(super) fn action_authorized(a: &App, h: &RequestContext, action: &Action) ->
                         }),
                 )
                 .is_ok())
+}
+
+/// Additional current team rights apply equally to UI, HTTP, MCP, Flow and leased workers.
+pub(super) fn additional_permissions(h: &RequestContext, action: &Action) -> Result<()> {
+    for scope in &action.required_permissions {
+        auth::permit(h, scope)?;
+    }
+    Ok(())
 }

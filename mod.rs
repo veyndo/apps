@@ -8,6 +8,7 @@ pub(crate) use commerce_hooks::{apply as apply_hooks, prepare as prepare_hooks};
 mod compatibility;
 mod consent;
 mod core_callbacks;
+mod core_exchange;
 mod credentials;
 mod distribution;
 pub(crate) use consent::actor_permissions;

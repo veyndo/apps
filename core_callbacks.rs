@@ -131,6 +131,9 @@ async fn execute(
         credentials::permit(h, permission)?;
         return invoke_app(a, h, id, name, &v["input"]).await;
     }
+    if ["order_import", "channel", "channel_product"].contains(&operation) {
+        return core_exchange::execute(a, h, &m, operation, &v).await;
+    }
     if operation == "b2b_requisition" {
         if !m.permissions.iter().any(|p| p == "b2b.manage") {
             return Err(Error(

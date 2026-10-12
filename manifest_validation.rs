@@ -40,6 +40,9 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             "knowledge.write",
             "payments.provider",
             "orders.read",
+            "orders.import",
+            "payments.record",
+            "channels.read",
             "documents.read",
             "b2b.read",
             "b2b.manage",
@@ -146,6 +149,11 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             || a.permission
                 .as_deref()
                 .is_some_and(|p| !auth::SCOPES.contains(&p))
+            || a.required_permissions.len() > 8
+            || a.required_permissions
+                .iter()
+                .any(|p| !auth::SCOPES.contains(&p.as_str()))
+            || (a.public && !a.required_permissions.is_empty())
             || (a.handler == "emit" && !m.permissions.contains(&"events.publish".into()))
             || (a.public && a.permission.is_some())
             || (a.handler == "job"
@@ -232,4 +240,33 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
     surfaces::validate_contract(m)?;
     native_views::validate(m)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn extra_action_rights_are_known_private_scopes() {
+        let mut value: Value = serde_json::from_str(include_str!(
+            "../../extensions/apps/marketplaces/manifest.json"
+        ))
+        .unwrap();
+        let parse = |v: &Value| serde_json::from_value::<Manifest>(v.clone()).unwrap();
+        assert!(validate(&parse(&value)).is_ok());
+        let idx = value["actions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .position(|a| a["name"] == "import_order")
+            .unwrap();
+        value["actions"][idx]["requiredPermissions"] = json!(["not.a.scope"]);
+        assert!(validate(&parse(&value)).is_err());
+        value["actions"][idx]["requiredPermissions"] = json!(["customers.pii"]);
+        value["actions"][idx]["public"] = json!(true);
+        value["actions"][idx]
+            .as_object_mut()
+            .unwrap()
+            .remove("permission");
+        assert!(validate(&parse(&value)).is_err());
+    }
 }

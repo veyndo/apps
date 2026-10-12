@@ -38,6 +38,7 @@ pub(super) async fn execute(
         &identity,
         action.permission.as_deref().unwrap_or("apps.manage"),
     )?;
+    gateway::additional_permissions(&identity, action)?;
     let state: String = row.get("status");
     let out = if op == "job_claim" {
         if state != "queued" {

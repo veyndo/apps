@@ -5,7 +5,7 @@ pub(super) fn validate_fields(e: &Entity) -> Result<()> {
         if let Some(kind) = f.core_reference.as_deref()
             && (!matches!(
                 kind,
-                "product" | "customer" | "order" | "b2bCompany" | "b2bUnit"
+                "product" | "customer" | "order" | "b2bCompany" | "b2bUnit" | "salesChannel"
             ) || f.kind != "string"
                 || !f.indexed
                 || !f.required
@@ -107,6 +107,7 @@ pub(super) fn entity_access(
         .iter()
         .filter(|a| a.entity.as_deref() == Some(e.name.as_str()) && a.handler == handler)
     {
+        gateway::additional_permissions(h, action)?;
         if let Some(scope) = action.permission.as_deref() {
             auth::permit(h, scope)?;
         }
@@ -129,6 +130,9 @@ pub(super) async fn validate_references(
         let query = match kind {
             "product" => "SELECT EXISTS(SELECT 1 FROM products WHERE tenant=$1 AND id=$2)",
             "customer" => "SELECT EXISTS(SELECT 1 FROM customers WHERE tenant=$1 AND id=$2)",
+            "salesChannel" => {
+                "SELECT EXISTS(SELECT 1 FROM sales_channels WHERE tenant=$1 AND id=$2)"
+            }
             "order" => "SELECT EXISTS(SELECT 1 FROM orders WHERE tenant=$1 AND id=$2)",
             "b2bCompany" => "SELECT EXISTS(SELECT 1 FROM b2b_companies WHERE tenant=$1 AND id=$2)",
             "b2bUnit" => "SELECT EXISTS(SELECT 1 FROM b2b_units WHERE tenant=$1 AND id=$2)",
