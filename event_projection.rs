@@ -48,6 +48,14 @@ pub(super) fn payload(m: &Manifest, kind: &str, data: Value) -> Value {
                 "simulation",
                 "salesChannelId",
             ]
+        } else if kind.starts_with("pos.") {
+            &[
+                "orderId",
+                "salesChannelId",
+                "paymentState",
+                "totalMinor",
+                "currency",
+            ]
         } else if kind.starts_with("customer.") {
             &["customerId", "id", "revision"]
         } else if kind.starts_with("product.") {
@@ -126,6 +134,23 @@ mod tests {
                 json!({"claimId":"claim","state":"confirmed","actor":"private-user"})
             ),
             json!({"claimId":"claim","state":"confirmed"})
+        );
+    }
+    #[test]
+    fn pos_events_require_explicit_scope_and_minimize_cashier_identity() {
+        let mut m: Manifest = serde_json::from_str(approval::built_in("slack").unwrap()).unwrap();
+        m.events = vec!["pos.sale_completed".into()];
+        m.permissions = vec!["events.read".into()];
+        assert!(!subscribed(&m, "pos.sale_completed"));
+        m.permissions.push("events:pos.*".into());
+        assert!(subscribed(&m, "pos.sale_completed"));
+        assert_eq!(
+            payload(
+                &m,
+                "pos.sale_completed",
+                json!({"orderId":"o","salesChannelId":"register","totalMinor":"100","cashierId":"private","tenderMinor":"200","email":"private@test"})
+            ),
+            json!({"orderId":"o","salesChannelId":"register","totalMinor":"100"})
         );
     }
     #[test]

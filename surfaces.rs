@@ -45,6 +45,9 @@ pub(crate) fn validate_contract(m: &Manifest) -> Result<()> {
             || !ids.insert(&s.id)
             || ![
                 "admin.navigation",
+                "admin.pos.catalog",
+                "admin.pos.cart",
+                "admin.pos.receipt",
                 "admin.order",
                 "admin.product",
                 "admin.product.general",
