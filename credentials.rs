@@ -15,7 +15,11 @@ pub(super) fn router() -> Router<App> {
 }
 pub(super) fn scope(permission: &str) -> Option<&'static str> {
     Some(match permission {
+        "data.read" | "data.write" => "apps.manage",
+        "b2b.manage" => "b2b.manage",
+        "b2b.read" => "b2b.read",
         "orders.read" => "orders.read",
+        "documents.read" => "documents.read",
         "customers.read" => "customers.read",
         "customers.pii" => "customers.pii",
         "products.read" => "catalog.read",

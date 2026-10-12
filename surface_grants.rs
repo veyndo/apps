@@ -23,9 +23,10 @@ pub(super) fn router() -> Router<App> {
 }
 pub(super) fn actor(h: &RequestContext) -> String {
     hash(&format!(
-        "{}:{}",
+        "{}:{}:{}",
         header(h, "authorization").unwrap_or(""),
-        header(h, "sw-context-token").unwrap_or("")
+        header(h, "sw-context-token").unwrap_or(""),
+        header(h, "x-customer-token").unwrap_or("")
     ))
 }
 pub(super) async fn context(a: &App, h: &RequestContext, v: &Value) -> Result<()> {
@@ -51,6 +52,14 @@ pub(super) async fn context(a: &App, h: &RequestContext, v: &Value) -> Result<()
                 "SELECT EXISTS(SELECT 1 FROM customers WHERE tenant=$1 AND id=$2)",
                 "customers.read",
             ),
+            "companyId" => (
+                "SELECT EXISTS(SELECT 1 FROM b2b_companies WHERE tenant=$1 AND id=$2)",
+                "b2b.read",
+            ),
+            "unitId" => (
+                "SELECT EXISTS(SELECT 1 FROM b2b_units WHERE tenant=$1 AND id=$2)",
+                "b2b.read",
+            ),
             "orderId" => (
                 "SELECT EXISTS(SELECT 1 FROM orders WHERE tenant=$1 AND id=$2)",
                 "orders.read",
@@ -65,7 +74,9 @@ pub(super) async fn context(a: &App, h: &RequestContext, v: &Value) -> Result<()
             .as_str()
             .filter(|s| !s.is_empty() && s.len() <= 100)
             .ok_or(bad("Invalid surface context reference"))?;
-        if h.principal.role.is_none() && key == "productId" {
+        if h.principal.role.is_none() && matches!(key.as_str(), "customerId" | "unitId") {
+            crate::b2b::surface_context(a, h, key, id).await?;
+        } else if h.principal.role.is_none() && key == "productId" {
             marketing::admit_product(a, h, id).await?;
         } else if h.principal.role.is_none()
             && matches!(key.as_str(), "salesChannelId" | "salesChannel")

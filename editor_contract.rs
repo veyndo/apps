@@ -3,8 +3,10 @@ use super::*;
 pub(super) fn validate_fields(e: &Entity) -> Result<()> {
     for f in &e.fields {
         if let Some(kind) = f.core_reference.as_deref()
-            && (!matches!(kind, "product" | "customer" | "order")
-                || f.kind != "string"
+            && (!matches!(
+                kind,
+                "product" | "customer" | "order" | "b2bCompany" | "b2bUnit"
+            ) || f.kind != "string"
                 || !f.indexed
                 || !f.required
                 || f.translatable
@@ -55,6 +57,8 @@ pub(super) fn validate_binding(
         "productId" => "product",
         "customerId" => "customer",
         "orderId" => "order",
+        "companyId" => "b2bCompany",
+        "unitId" => "b2bUnit",
         _ => return Err(bad("Unknown editor context key")),
     };
     if !m.entities.iter().any(|e| {
@@ -81,6 +85,8 @@ pub(super) fn validate_binding(
             ]
             .contains(&s.location.as_str()),
             "customer" => s.location == "admin.customer",
+            "b2bCompany" => s.location == "admin.b2b.company",
+            "b2bUnit" => s.location == "admin.b2b.unit",
             _ => ["admin.order", "admin.order.general"].contains(&s.location.as_str()),
         };
         if !valid {
@@ -124,6 +130,8 @@ pub(super) async fn validate_references(
             "product" => "SELECT EXISTS(SELECT 1 FROM products WHERE tenant=$1 AND id=$2)",
             "customer" => "SELECT EXISTS(SELECT 1 FROM customers WHERE tenant=$1 AND id=$2)",
             "order" => "SELECT EXISTS(SELECT 1 FROM orders WHERE tenant=$1 AND id=$2)",
+            "b2bCompany" => "SELECT EXISTS(SELECT 1 FROM b2b_companies WHERE tenant=$1 AND id=$2)",
+            "b2bUnit" => "SELECT EXISTS(SELECT 1 FROM b2b_units WHERE tenant=$1 AND id=$2)",
             _ => return Err(bad("Unknown core reference")),
         };
         let owned: bool = sqlx::query_scalar(query)

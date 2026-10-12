@@ -40,6 +40,7 @@ pub(crate) async fn configure(a: &App, h: &RequestContext, id: &str, v: &Value) 
         .ok_or(bad("Cart not found"))?;
     let mut cart = stored(&row)?;
     pos::guard_cart(h, &cart)?;
+    b2b::guard_conn(&mut tx, h, &cart).await?;
     if cart.status != "open" || v["revision"].as_i64() != Some(cart.revision) {
         return Err(conflict("Cart changed or terminal"));
     }

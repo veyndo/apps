@@ -21,7 +21,7 @@ pub(super) fn subscribed(m: &Manifest, kind: &str) -> bool {
     let own = kind.starts_with(&format!("app.{}.", m.id)) && permission(m, "events:self");
     // Legacy permission retains minimized order/consumer notifications only. Never team/customer/app secrets.
     let legacy = permission(m, "events.read") && ["order", "consumer"].contains(&family);
-    declared && (scoped || own || legacy)
+    declared && (scoped || own || legacy) && (family != "b2b" || permission(m, "b2b.read"))
 }
 pub(super) fn payload(m: &Manifest, kind: &str, data: Value) -> Value {
     if permission(m, "customers.pii")
@@ -55,6 +55,23 @@ pub(super) fn payload(m: &Manifest, kind: &str, data: Value) -> Value {
                 "paymentState",
                 "totalMinor",
                 "currency",
+            ]
+        } else if kind.starts_with("b2b.") {
+            if !permission(m, "b2b.read") {
+                return json!({});
+            }
+            &[
+                "id",
+                "revision",
+                "kind",
+                "companyId",
+                "unitId",
+                "orderId",
+                "quoteId",
+                "approvalId",
+                "state",
+                "currency",
+                "totalMinor",
             ]
         } else if kind.starts_with("customer.") {
             &["customerId", "id", "revision"]
@@ -151,6 +168,20 @@ mod tests {
                 json!({"orderId":"o","salesChannelId":"register","totalMinor":"100","cashierId":"private","tenderMinor":"200","email":"private@test"})
             ),
             json!({"orderId":"o","salesChannelId":"register","totalMinor":"100"})
+        );
+    }
+    #[test]
+    fn company_events_require_explicit_rights_and_never_include_buyer_data() {
+        let mut m: Manifest = serde_json::from_str(approval::built_in("slack").unwrap()).unwrap();
+        m.events = vec!["b2b.purchase_completed".into()];
+        m.permissions = vec!["events.read".into(), "events:b2b.*".into()];
+        let data = json!({"unitId":"unit","orderId":"order","customerId":"private", "email":"private@example.test","totalMinor":"100"});
+        assert!(!subscribed(&m, "b2b.purchase_completed"));
+        m.permissions.push("b2b.read".into());
+        assert!(subscribed(&m, "b2b.purchase_completed"));
+        assert_eq!(
+            payload(&m, "b2b.purchase_completed", data),
+            json!({"unitId":"unit","orderId":"order","totalMinor":"100"})
         );
     }
     #[test]

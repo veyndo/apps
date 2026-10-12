@@ -81,6 +81,66 @@ async fn execute(
         auth::permit(h, "apps.manage")?;
         return job_callbacks::execute(a, h, &m, operation, &v).await;
     }
+    if operation == "receipt_snapshot" {
+        input_schema::validate(
+            &json!({"type":"object","properties":{"id":{"type":"string","maxLength":100},"receiptId":{"type":"string","maxLength":100}},"required":["id","receiptId"],"additionalProperties":false}),
+            &v,
+        )?;
+        for permission in ["documents.read", "orders.read", "customers.pii"] {
+            if !m.permissions.iter().any(|p| p == permission) {
+                return Err(Error(
+                    StatusCode::FORBIDDEN,
+                    "Receipt export requires explicit document, order and PII consent".into(),
+                ));
+            }
+            credentials::permit(h, permission)?;
+            auth::permit(h, credentials::scope(permission).unwrap())?;
+        }
+        return crate::operations::receipt_snapshot(
+            a,
+            h,
+            v["id"].as_str().unwrap(),
+            v["receiptId"].as_str().unwrap(),
+        )
+        .await;
+    }
+    if operation == "record_action" {
+        input_schema::validate(
+            &json!({"type":"object","properties":{"action":{"type":"string","maxLength":32},"input":{"type":"object"}},"required":["action","input"],"additionalProperties":false}),
+            &v,
+        )?;
+        let name = v["action"].as_str().ok_or(bad("Action required"))?;
+        let action = m
+            .actions
+            .iter()
+            .find(|action| {
+                action.name == name && ["list", "save"].contains(&action.handler.as_str())
+            })
+            .ok_or(bad("Callback requires a declared native list/save action"))?;
+        let permission = if action.handler == "list" {
+            "data.read"
+        } else {
+            "data.write"
+        };
+        if !m.permissions.iter().any(|p| p == permission) {
+            return Err(Error(
+                StatusCode::FORBIDDEN,
+                "Native record capability not declared".into(),
+            ));
+        }
+        credentials::permit(h, permission)?;
+        return invoke_app(a, h, id, name, &v["input"]).await;
+    }
+    if operation == "b2b_requisition" {
+        if !m.permissions.iter().any(|p| p == "b2b.manage") {
+            return Err(Error(
+                StatusCode::FORBIDDEN,
+                "App B2B permission required".into(),
+            ));
+        }
+        credentials::permit(h, "b2b.manage")?;
+        return crate::b2b::invoke(a, h, "b2b.requisition.import", &v).await;
+    }
     let (capability, command) = match operation {
         "order" => ("orders.read", "merchant.order"),
         "customer" => ("customers.read", "merchant.customer"),

@@ -169,6 +169,18 @@ async fn install_inner(
         for f in &e.fields {
             let target = if matches!(f.kind.as_str(), "image" | "file") {
                 Some("product_assets".to_owned())
+            } else if let Some(kind) = f.core_reference.as_deref() {
+                Some(
+                    match kind {
+                        "product" => "products",
+                        "customer" => "customers",
+                        "order" => "orders",
+                        "b2bCompany" => "b2b_companies",
+                        "b2bUnit" => "b2b_units",
+                        _ => return Err(bad("Unknown core reference")),
+                    }
+                    .to_owned(),
+                )
             } else {
                 f.references.as_ref().map(|target| table(t, &m.id, target))
             };
