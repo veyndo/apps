@@ -36,17 +36,17 @@ mod tests {
     fn retains_secure_and_loopback_defaults() {
         assert!(permits("https://provider.example/app", ""));
         assert!(permits("http://127.0.0.1:8797/email", ""));
-        assert!(!permits("http://sellama-connectors:8797/email", ""));
+        assert!(!permits("http://veyndo-connectors:8797/email", ""));
     }
     #[test]
     fn private_permission_matches_exact_scheme_host_and_port() {
-        let origins = "http://sellama-connectors:8797";
-        assert!(permits("http://sellama-connectors:8797/email", origins));
+        let origins = "http://veyndo-connectors:8797";
+        assert!(permits("http://veyndo-connectors:8797/email", origins));
         for url in [
-            "http://sellama-connectors:8798/email",
-            "http://sellama-connectors.evil:8797/email",
+            "http://veyndo-connectors:8798/email",
+            "http://veyndo-connectors.evil:8797/email",
             "http://other:8797/email",
-            "ftp://sellama-connectors:8797/email",
+            "ftp://veyndo-connectors:8797/email",
         ] {
             assert!(!permits(url, origins));
         }
@@ -54,19 +54,19 @@ mod tests {
     #[test]
     fn rejects_credentials_queries_fragments_and_non_origin_allowlist_entries() {
         for url in [
-            "http://user@sellama-connectors:8797/email",
-            "http://sellama-connectors:8797/email?token=secret",
+            "http://user@veyndo-connectors:8797/email",
+            "http://veyndo-connectors:8797/email?token=secret",
             "https://provider.example/app#token",
         ] {
-            assert!(!permits(url, "http://sellama-connectors:8797"));
+            assert!(!permits(url, "http://veyndo-connectors:8797"));
         }
         for entry in [
             "*",
-            "http://sellama-connectors:8797/email",
-            "http://user@sellama-connectors:8797",
-            "http://sellama-connectors:8797?x=1",
+            "http://veyndo-connectors:8797/email",
+            "http://user@veyndo-connectors:8797",
+            "http://veyndo-connectors:8797?x=1",
         ] {
-            assert!(!permits("http://sellama-connectors:8797/email", entry));
+            assert!(!permits("http://veyndo-connectors:8797/email", entry));
         }
     }
 }

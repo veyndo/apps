@@ -1,9 +1,9 @@
 //! Typed pure commerce hooks share the compiled sandbox cache and receive explicit immutable snapshots, never SQL or credentials.
 use super::*;
-use sellama::component_runtime::{
+use std::sync::Arc;
+use veyndo::component_runtime::{
     self as wit, AppRecord, CartItem, CartSnapshot, Money, ProductSnapshot, Snapshot,
 };
-use std::sync::Arc;
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct Contract {

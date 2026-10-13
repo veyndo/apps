@@ -72,7 +72,7 @@ pub(super) fn installation(m: &Manifest) -> Result<()> {
 pub(crate) fn print_digest() {
     let path = env::args()
         .nth(2)
-        .expect("Usage: sellama --app-digest MANIFEST.json");
+        .expect("Usage: veyndo --app-digest MANIFEST.json");
     let source = std::fs::read_to_string(path).expect("Read app manifest");
     let m: Manifest = serde_json::from_str(&source).expect("Typed app manifest");
     println!("{}", canonical_digest(&m));
