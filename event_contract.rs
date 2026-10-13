@@ -51,7 +51,7 @@ pub(super) fn destination(url: &str) -> Result<reqwest::Url> {
         ));
     }
     if let Ok(ip) = u.host_str().unwrap_or("").parse()
-        && !sellm::network_policy::public_address(ip)
+        && !sellama::network_policy::public_address(ip)
     {
         return Err(bad("Private event destinations are prohibited"));
     }

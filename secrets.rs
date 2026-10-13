@@ -34,7 +34,7 @@ async fn list(
     let m = package(&a, &t, &id, false).await?;
     let secrets: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('kind',kind,'revision',revision,'rotatedAt',rotated_at,'packageDigest',package_digest) FROM app_service_secrets WHERE tenant=$1 AND app=$2 ORDER BY kind").bind(&t).bind(id).fetch_all(&a.db).await?;
     Ok(Json(
-        json!({"digest":approval::canonical_digest(&m),"kinds":KINDS.iter().filter(|k|applicable(&m,k)).collect::<Vec<_>>(),"canManage":auth::permit(&h,"team.manage").is_ok() && h.principal.user.as_deref().is_some_and(|u|u!="bootstrap") && staging::parent(&a,&t).await?.is_none(),"secrets":secrets,"encryptionReady":sellm::inference::settings::encryption_ready()}),
+        json!({"digest":approval::canonical_digest(&m),"kinds":KINDS.iter().filter(|k|applicable(&m,k)).collect::<Vec<_>>(),"canManage":auth::permit(&h,"team.manage").is_ok() && h.principal.user.as_deref().is_some_and(|u|u!="bootstrap") && staging::parent(&a,&t).await?.is_none(),"secrets":secrets,"encryptionReady":sellama::inference::settings::encryption_ready()}),
     ))
 }
 async fn rotate(
@@ -75,13 +75,13 @@ async fn rotate(
             "Secret must be 32..4096 characters without control characters",
         ))?;
     let encrypted =
-        sellm::inference::settings::seal(&binding(&t, &id, &kind, &digest, revision + 1), secret)
+        sellama::inference::settings::seal(&binding(&t, &id, &kind, &digest, revision + 1), secret)
             .map_err(|_| {
-            Error(
-                StatusCode::SERVICE_UNAVAILABLE,
-                "Platform secret encryption is unavailable".into(),
-            )
-        })?;
+                Error(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "Platform secret encryption is unavailable".into(),
+                )
+            })?;
     let mut tx = a.db.begin().await?;
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,844))")
         .bind(format!("{t}:{id}:{kind}"))
@@ -142,7 +142,7 @@ fn decrypt(
             "App secret belongs to an older package; review and rotate it for this version",
         ));
     }
-    let secret = sellm::inference::settings::open(
+    let secret = sellama::inference::settings::open(
         &binding(t, &m.id, kind, &digest, row.get("revision")),
         &row.get::<String, _>("ciphertext"),
     )

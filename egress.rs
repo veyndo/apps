@@ -66,7 +66,7 @@ async fn connect(url: &reqwest::Url, public_only: bool) -> Result<reqwest::Clien
                 || if loopback {
                     a.ip().is_loopback()
                 } else {
-                    sellm::network_policy::public_address(a.ip())
+                    sellama::network_policy::public_address(a.ip())
                 }
         })
     {

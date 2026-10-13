@@ -1,6 +1,6 @@
 //! Typed pure commerce hooks share the compiled sandbox cache and receive explicit immutable snapshots, never SQL or credentials.
 use super::*;
-use sellm::component_runtime::{
+use sellama::component_runtime::{
     self as wit, AppRecord, CartItem, CartSnapshot, Money, ProductSnapshot, Snapshot,
 };
 use std::sync::Arc;
