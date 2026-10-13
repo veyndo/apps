@@ -66,7 +66,7 @@ async fn connect(url: &reqwest::Url, public_only: bool) -> Result<reqwest::Clien
                 || if loopback {
                     a.ip().is_loopback()
                 } else {
-                    vendune::network_policy::public_address(a.ip())
+                    sellm::network_policy::public_address(a.ip())
                 }
         })
     {

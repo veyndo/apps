@@ -59,7 +59,7 @@ fn decimal(s: &str) -> bool {
         && (!s.contains('.') || !fraction.is_empty())
 }
 fn money(v: &Value) -> bool {
-    let Ok(m) = serde_json::from_value::<vendune::money::Money>(v.clone()) else {
+    let Ok(m) = serde_json::from_value::<sellm::money::Money>(v.clone()) else {
         return false;
     };
     currencies::scale(m.currency().code())==Some(m.currency().scale())

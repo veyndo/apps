@@ -22,7 +22,7 @@ pub(crate) struct Dependency {
 fn message(m: &Manifest) -> Vec<u8> {
     let mut m = m.clone();
     m.distribution.as_mut().unwrap().signature.clear();
-    format!("vendune-package-v1\n{}", approval::canonical_digest(&m)).into_bytes()
+    format!("sellm-package-v1\n{}", approval::canonical_digest(&m)).into_bytes()
 }
 fn verify(m: &Manifest, keys: &Value) -> Result<()> {
     let Some(d) = &m.distribution else {
@@ -194,7 +194,7 @@ pub(crate) fn sign_package() {
     use std::io::Read;
     let path = env::args()
         .nth(2)
-        .expect("Usage: vendune --sign-app MANIFEST.json < BASE64_SEED_FILE");
+        .expect("Usage: sellm --sign-app MANIFEST.json < BASE64_SEED_FILE");
     let mut m: Manifest = serde_json::from_slice(&std::fs::read(path).expect("Read manifest"))
         .expect("Typed manifest");
     assert!(
