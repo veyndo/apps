@@ -30,6 +30,8 @@ mod evidence;
 mod evidence_routes;
 pub(crate) use evidence::*;
 mod egress;
+// Shared bounded public HTTPS transport; protocols must never forward customer credentials.
+pub(crate) use egress::public_client as public_https_client;
 mod field_values;
 mod gateway;
 mod input_schema;

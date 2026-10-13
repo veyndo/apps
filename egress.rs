@@ -10,7 +10,7 @@ static CLIENTS: OnceLock<Mutex<Clients>> = OnceLock::new();
 pub(super) async fn client(url: &reqwest::Url) -> Result<reqwest::Client> {
     connect(url, false).await
 }
-pub(super) async fn public_client(url: &reqwest::Url) -> Result<reqwest::Client> {
+pub(crate) async fn public_client(url: &reqwest::Url) -> Result<reqwest::Client> {
     connect(url, true).await
 }
 async fn connect(url: &reqwest::Url, public_only: bool) -> Result<reqwest::Client> {
