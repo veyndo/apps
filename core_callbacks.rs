@@ -7,13 +7,6 @@ pub(super) fn router() -> Router<App> {
         post(invoke),
     )
 }
-fn projection(value: &Value, keys: &[&str]) -> Value {
-    json!(
-        keys.iter()
-            .filter_map(|k| value.get(*k).map(|v| ((*k).to_owned(), v.clone())))
-            .collect::<serde_json::Map<String, Value>>()
-    )
-}
 async fn invoke(
     State(a): State<App>,
     h: RequestContext,
@@ -174,61 +167,17 @@ async fn execute(
         arguments["id"] =
             json!(email.ok_or(Error(StatusCode::NOT_FOUND, "Customer not found".into()))?);
     }
-    let result = crate::operations::invoke(a, h, command, &arguments).await?;
     let pii = credentials::permit(h, "customers.pii").is_ok()
         && m.permissions.iter().any(|p| p == "customers.pii")
         && auth::permit(h, "customers.pii").is_ok();
-    let result = if !pii && operation == "order" {
-        let mut clean = projection(
-            &result,
-            &[
-                "id",
-                "number",
-                "orderNumber",
-                "state",
-                "paymentState",
-                "deliveryState",
-                "currency",
-                "currencyScale",
-                "totalMinor",
-                "total",
-                "createdAt",
-            ],
-        );
-        clean["items"] = json!(
-            result["lineItems"]
-                .as_array()
-                .map(|items| items
-                    .iter()
-                    .take(100)
-                    .map(|item| projection(
-                        item,
-                        &[
-                            "referencedId",
-                            "quantity",
-                            "price",
-                            "unitPrice",
-                            "totalPrice"
-                        ]
-                    ))
-                    .collect::<Vec<_>>())
-                .unwrap_or_default()
-        );
-        clean
-    } else if !pii && operation == "customer" {
-        projection(
-            &result,
-            &[
-                "id",
-                "guest",
-                "active",
-                "groupId",
-                "accountType",
-                "createdAt",
-            ],
+    if !pii && ["order", "customer"].contains(&operation) {
+        return crate::operations::redacted_read(
+            a,
+            h,
+            operation,
+            arguments["id"].as_str().unwrap(),
         )
-    } else {
-        result
-    };
-    Ok(result)
+        .await;
+    }
+    crate::operations::invoke(a, h, command, &arguments).await
 }

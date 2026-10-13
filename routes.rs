@@ -17,7 +17,7 @@ pub(crate) fn app_router() -> Router<App> {
         .route("/store-api/apps/analytics.js", get(analytics_sdk))
         .secure_route(
             "/api/apps",
-            &[("GET", "catalog.read"), ("POST", "apps.manage")],
+            &[("GET", "apps.read"), ("POST", "apps.manage")],
             get(app_list).post(app_install),
         )
         .secure_route(

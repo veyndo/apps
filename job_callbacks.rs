@@ -22,7 +22,7 @@ pub(super) async fn execute(
         return Err(conflict("Job package changed; review before retrying"));
     }
     let actor: String = row.get("actor");
-    let membership=sqlx::query("SELECT role,permissions FROM memberships WHERE tenant=$1 AND user_id=$2 AND active FOR SHARE").bind(&t).bind(&actor).fetch_optional(&mut *tx).await?.ok_or(Error(StatusCode::FORBIDDEN,"Job creator no longer has access".into()))?;
+    let membership=sqlx::query("SELECT role,permissions FROM membership_grants WHERE tenant=$1 AND user_id=$2 AND active FOR SHARE").bind(&t).bind(&actor).fetch_optional(&mut *tx).await?.ok_or(Error(StatusCode::FORBIDDEN,"Job creator no longer has access".into()))?;
     let mut identity = RequestContext::new();
     identity.principal.user = Some(actor);
     identity.principal.role = Some(membership.get("role"));
