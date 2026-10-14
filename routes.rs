@@ -12,6 +12,7 @@ pub(crate) fn app_router() -> Router<App> {
         .merge(consent::router())
         .merge(secrets::router())
         .merge(core_callbacks::router())
+        .merge(core_documents::router())
         .merge(asset_surfaces::router())
         .merge(jobs::router())
         .route("/store-api/apps/analytics.js", get(analytics_sdk))

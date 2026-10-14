@@ -44,6 +44,13 @@ pub(super) async fn attach(
                 .await?;
         }
     }
+    // Old install migrations run before carrier documents exist. Once available, retained files share the same aggregate budget.
+    let documents: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='order_receipts' AND column_name='source_app')").fetch_one(&mut **tx).await?;
+    if documents {
+        let count=sqlx::query("SELECT count(*) AS rows,coalesce(sum(octet_length(content)+octet_length(snapshot::text)+512),0)::bigint AS bytes FROM order_receipts WHERE tenant=$1 AND source_app=$2").bind(t).bind(&m.id).fetch_one(&mut **tx).await?;
+        rows += count.get::<i64, _>("rows");
+        bytes += count.get::<i64, _>("bytes");
+    }
     sqlx::query(
         "UPDATE app_storage_usage SET rows=$3,bytes=$4,updated_at=now() WHERE tenant=$1 AND app=$2",
     )

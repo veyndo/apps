@@ -64,8 +64,8 @@ pub(super) fn router() -> Router<App> {
         .secure_route("/api/apps/{id}/jobs", &[("GET", "apps.manage")], get(list))
         .secure_route(
             "/api/apps/{id}/jobs/{job}",
-            &[("POST", "apps.manage")],
-            post(control),
+            &[("GET", "read"), ("POST", "apps.manage")],
+            get(detail).post(control),
         )
 }
 async fn list(
@@ -74,9 +74,52 @@ async fn list(
     Path(id): Path<String>,
 ) -> Result<Json<Value>> {
     let t = merchant(&a, &h)?;
-    package(&a, &t, &id, false).await?;
-    let rows:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'action',action,'status',CASE WHEN status IN ('running','cancel_requested') AND lease_until<now() THEN 'uncertain' ELSE status END,'progress',progress,'message',message,'result',CASE WHEN status='succeeded' THEN result ELSE NULL END,'actor',actor,'revision',revision,'createdAt',created_at,'updatedAt',updated_at) FROM app_jobs WHERE tenant=$1 AND app=$2 ORDER BY created_at DESC,id DESC LIMIT 100").bind(&t).bind(&id).fetch_all(&a.db).await?;
+    let m = package(&a, &t, &id, false).await?;
+    let mut rows:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'action',action,'packageDigest',package_digest,'status',CASE WHEN status IN ('running','cancel_requested') AND lease_until<now() THEN 'uncertain' ELSE status END,'progress',progress,'message',message,'result',CASE WHEN status='succeeded' THEN result ELSE NULL END,'actor',actor,'revision',revision,'createdAt',created_at,'updatedAt',updated_at) FROM app_jobs WHERE tenant=$1 AND app=$2 ORDER BY created_at DESC,id DESC LIMIT 100").bind(&t).bind(&id).fetch_all(&a.db).await?;
+    let digest = approval::canonical_digest(&m);
+    for row in &mut rows {
+        let allowed = row["packageDigest"] == digest
+            && m.actions
+                .iter()
+                .find(|action| Some(action.name.as_str()) == row["action"].as_str())
+                .is_some_and(|action| {
+                    auth::permit(&h, action.permission.as_deref().unwrap_or("apps.manage")).is_ok()
+                        && gateway::additional_permissions(&h, action).is_ok()
+                });
+        if !allowed {
+            row["message"] = json!({});
+            row["result"] = Value::Null;
+        }
+        row.as_object_mut().unwrap().remove("packageDigest");
+    }
     Ok(Json(json!({"jobs":rows})))
+}
+async fn detail(
+    State(a): State<App>,
+    h: RequestContext,
+    Path((app, id)): Path<(String, String)>,
+) -> Result<Json<Value>> {
+    let t = merchant(&a, &h)?;
+    let m = package(&a, &t, &app, true).await?;
+    let row=sqlx::query("SELECT actor,action,package_digest,jsonb_build_object('id',id,'status',CASE WHEN status IN ('running','cancel_requested') AND lease_until<now() THEN 'uncertain' ELSE status END,'progress',progress,'message',message,'result',CASE WHEN status='succeeded' THEN result ELSE NULL END,'revision',revision) AS data FROM app_jobs WHERE tenant=$1 AND app=$2 AND id=$3")
+        .bind(&t).bind(&app).bind(&id).fetch_optional(&a.db).await?.ok_or(Error(StatusCode::NOT_FOUND,"App job not found".into()))?;
+    if h.principal.user.as_deref() != Some(row.get::<String, _>("actor").as_str())
+        && auth::permit(&h, "apps.manage").is_err()
+    {
+        return Err(Error(StatusCode::NOT_FOUND, "App job not found".into()));
+    }
+    if row.get::<String, _>("package_digest") != approval::canonical_digest(&m) {
+        return Err(conflict("Job package changed; review its archived result"));
+    }
+    let name: String = row.get("action");
+    let action = m
+        .actions
+        .iter()
+        .find(|a| a.name == name && a.handler == "job")
+        .ok_or(conflict("Job action removed"))?;
+    auth::permit(&h, action.permission.as_deref().unwrap_or("apps.manage"))?;
+    gateway::additional_permissions(&h, action)?;
+    Ok(Json(row.get("data")))
 }
 async fn control(
     State(a): State<App>,

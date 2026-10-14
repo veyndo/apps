@@ -74,6 +74,12 @@ async fn execute(
         auth::permit(h, "apps.manage")?;
         return job_callbacks::execute(a, h, &m, operation, &v).await;
     }
+    if operation == "delivery_snapshot" {
+        return core_documents::snapshot(a, h, &m, &v).await;
+    }
+    if ["delivery_reserve", "delivery_release"].contains(&operation) {
+        return core_documents::booking(a, h, &m, operation, &v).await;
+    }
     if operation == "receipt_snapshot" {
         input_schema::validate(
             &json!({"type":"object","properties":{"id":{"type":"string","maxLength":100},"receiptId":{"type":"string","maxLength":100}},"required":["id","receiptId"],"additionalProperties":false}),

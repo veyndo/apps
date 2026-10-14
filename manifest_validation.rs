@@ -44,6 +44,8 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             "payments.record",
             "channels.read",
             "documents.read",
+            "documents.create",
+            "deliveries.write",
             "b2b.read",
             "b2b.manage",
             "customers.read",

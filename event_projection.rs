@@ -79,6 +79,18 @@ pub(super) fn payload(m: &Manifest, kind: &str, data: Value) -> Value {
             &["productId", "id", "revision", "stock"]
         } else if kind.starts_with("consumer.") {
             &["requestId", "id", "customerId", "orderId", "kind", "locale"]
+        } else if kind.starts_with("delivery.") {
+            &[
+                "orderId",
+                "deliveryId",
+                "deliveryIndex",
+                "sourceIndex",
+                "revision",
+                "kind",
+                "state",
+            ]
+        } else if kind == "document.created" {
+            &["orderId", "documentId", "kind", "sourceApp"]
         } else if kind.starts_with("intelligence.") || kind == "merchant.change.applied" {
             &[
                 "id",
@@ -129,6 +141,20 @@ pub(super) fn validate(m: &Manifest) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn fulfillment_events_keep_links_but_never_project_addresses_or_tokens() {
+        let mut m: Manifest = serde_json::from_str(approval::built_in("slack").unwrap()).unwrap();
+        m.permissions.push("customers.pii".into());
+        let data = json!({"orderId":"o","deliveryId":"p","documentId":"d","kind":"shipping_label","sourceApp":"carrier","order":{"shippingAddress":{"name":"private"}},"trackingCode":"private","token":"private"});
+        assert_eq!(
+            payload(&m, "delivery.split", data.clone()),
+            json!({"orderId":"o","deliveryId":"p","kind":"shipping_label"})
+        );
+        assert_eq!(
+            payload(&m, "document.created", data),
+            json!({"orderId":"o","documentId":"d","kind":"shipping_label","sourceApp":"carrier"})
+        );
+    }
     #[test]
     fn intelligence_requires_scoped_subscription_and_projects_no_private_evidence() {
         let mut m: Manifest = serde_json::from_str(approval::built_in("slack").unwrap()).unwrap();
