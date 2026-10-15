@@ -48,9 +48,10 @@ pub(crate) mod hosted;
 pub(crate) mod service_limits;
 mod service_policy;
 mod surface_grants;
+mod surface_registry;
 #[cfg(test)]
 mod surface_tests;
-mod surfaces;
+pub(crate) mod surfaces;
 mod ui_bundles;
 pub(crate) use service_limits::ServiceLimits;
 mod observability;

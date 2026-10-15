@@ -124,9 +124,11 @@ async fn create(
         .actions
         .iter()
         .filter(|name| {
-            m.actions
-                .iter()
-                .any(|act| act.name == **name && gateway::action_authorized(&a, &h, act))
+            m.actions.iter().any(|act| {
+                act.name == **name
+                    && gateway::action_authorized(&a, &h, act)
+                    && (v["readOnly"] != true || surfaces::readonly(act))
+            })
         })
         .collect::<Vec<_>>();
     let grant = format!("{}{}", uid(), uid());

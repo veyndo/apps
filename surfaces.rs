@@ -58,6 +58,7 @@ pub(crate) fn validate_contract(m: &Manifest) -> Result<()> {
                 "admin.customer",
                 "admin.order.general",
                 "storefront.page",
+                "storefront.block",
                 "storefront.home",
                 "storefront.header",
                 "product.detail",
@@ -66,6 +67,7 @@ pub(crate) fn validate_contract(m: &Manifest) -> Result<()> {
             ]
             .contains(&s.location.as_str())
             || (m.runtime != "service" && !native_views::is_native(m, s))
+            || (s.location == "storefront.block" && !native_views::is_native(m, s))
             || !m.permissions.iter().any(|p| {
                 p == if private {
                     "admin.slot"
@@ -141,76 +143,7 @@ pub(super) fn surface_url(id: &str, path: &str) -> Option<String> {
     url.set_fragment(None);
     Some(url.to_string())
 }
-async fn registry(a: &App, h: &RequestContext, public: bool) -> Result<Value> {
-    if !public {
-        merchant(a, h)?;
-    }
-    let (settings, _) = commerce::config(a, &tenant(h)?).await?;
-    let rows =
-        sqlx::query("SELECT manifest FROM app_packages WHERE tenant=$1 AND active ORDER BY id")
-            .bind(tenant(h)?)
-            .fetch_all(&a.db)
-            .await?;
-    let mut surfaces = vec![];
-    let mut public_apps = vec![];
-    for row in rows {
-        let m: Manifest =
-            serde_json::from_value(row.get("manifest")).map_err(|_| bad("Invalid app package"))?;
-        if m.actions.iter().any(|act| act.public) {
-            public_apps.push(m.id.clone());
-        }
-        for s in &m.surfaces {
-            if s.location.starts_with("admin.") == public
-                || s.permission
-                    .as_deref()
-                    .is_some_and(|p| auth::permit(h, p).is_err())
-            {
-                continue;
-            }
-            if let Some(mut view) = native_views::payload(&m, s) {
-                let allowed = s
-                    .actions
-                    .iter()
-                    .filter(|name| {
-                        m.actions
-                            .iter()
-                            .any(|act| act.name == **name && gateway::action_authorized(a, h, act))
-                    })
-                    .cloned()
-                    .collect::<Vec<_>>();
-                if let Some(blocks) = view["view"]["blocks"].as_array_mut() {
-                    blocks.retain(|b| {
-                        ["text", "button", "frame", "tabs"]
-                            .iter()
-                            .any(|kind| b["kind"] == *kind)
-                            || b["readAction"]
-                                .as_str()
-                                .is_some_and(|n| allowed.iter().any(|a| a == n))
-                    });
-                    for b in blocks {
-                        if b["kind"] == "form"
-                            && b["writeAction"]
-                                .as_str()
-                                .is_none_or(|n| !allowed.iter().any(|a| a == n))
-                        {
-                            b["kind"] = json!("cards");
-                            b.as_object_mut().unwrap().remove("writeAction");
-                        }
-                    }
-                }
-                view["tenant"] = json!(tenant(h)?);
-                let mut surface = json!(s);
-                surface["actions"] = json!(allowed);
-                surfaces.push(json!({"app":m.id,"version":m.version,"surface":surface,"native":view,"mainLocale":settings.main_locale,"locales":settings.locales}));
-            } else if approval::approved(&m, &crate::runtime_config::get().services[&m.id])
-                && let Some(url) = surface_url(&m.id, &s.ui_path)
-            {
-                surfaces.push(json!({"app":m.id,"version":m.version,"surface":s,"url":url}));
-            }
-        }
-    }
-    Ok(json!({"surfaces":surfaces,"publicApps":public_apps,"mainLocale":settings.main_locale}))
-}
+pub(crate) use super::surface_registry::registry;
 async fn admin_surfaces(State(a): State<App>, h: RequestContext) -> Result<Json<Value>> {
     Ok(Json(registry(&a, &h, false).await?))
 }
