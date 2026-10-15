@@ -41,3 +41,6 @@ The [source inventory](../../docs/module-inventory.md) is checked in CI. [The be
 
 - `settings.rs`: bounded, localized package setting declarations and live personal-administrator configuration. Values reuse `secrets.rs` authenticated encryption, digest/CAS fence and metadata outbox. Secret values have no browser GET path; private approved service actions receive `_appSettings` server-side. No public settings exposure, sandbox credential copy or credential rollback.
 - Installation admission now limits new package IDs to 128 per tenant and declared indexes to 64 per package. Existing-package updates remain possible at the package-count limit; tenant/app rows and byte quotas continue unchanged. These caps are not a production-scale benchmark.
+
+- `input_schema.rs`, `input_schema_tests.rs`: bounded input/output schemas, nullable unions and escaped field pointers. This is an explicit subset, not a general JSON Schema engine.
+- `tool_contract.rs`: current authorized app discovery through the shared native tool description and optional result validation. Result-contract failures do not undo an already performed effect and are not automatically retried.

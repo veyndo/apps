@@ -150,6 +150,8 @@ pub(crate) struct Action {
     pub handler: String,
     pub entity: Option<String>,
     pub input_schema: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_schema: Option<Value>,
     #[serde(default)]
     pub public: bool,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
@@ -172,8 +174,8 @@ pub(crate) fn identifier(s: &str) -> bool {
 }
 /// Quote a contract-validated field so SQL keywords remain usable as app field names.
 pub(crate) fn column(name: &str) -> String {
-    debug_assert!(identifier(name));
-    format!("\"{name}\"")
+    // Escape even an invalid/internal name; admission still applies the closed identifier grammar.
+    format!("\"{}\"", name.replace('"', "\"\""))
 }
 pub(crate) fn table(tenant: &str, app: &str, entity: &str) -> String {
     format!("app_{}_{}", &hash(&format!("{tenant}:{app}"))[..24], entity)
@@ -194,6 +196,12 @@ mod tests {
         ] {
             assert!(!identifier(s));
         }
+    }
+    #[test]
+    fn quoted_sql_names_escape_every_embedded_delimiter() {
+        assert_eq!(column("order"), "\"order\"");
+        assert_eq!(column("x\"; SELECT 1; --"), "\"x\"\"; SELECT 1; --\"");
+        assert!(!identifier("x\"; SELECT 1; --"));
     }
     #[test]
     fn order_configurations_are_never_public() {
@@ -231,7 +239,9 @@ mod tests {
                 .as_array()
                 .unwrap()
                 .iter()
-                .all(|a| a.get("readOnly").is_none() && a.get("permission").is_none())
+                .all(|a| a.get("readOnly").is_none()
+                    && a.get("permission").is_none()
+                    && a.get("outputSchema").is_none())
         );
     }
     #[test]

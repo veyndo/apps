@@ -228,13 +228,12 @@ pub(crate) async fn save_tx(
         .bind(id)
         .fetch_optional(&mut **tx)
         .await?;
-    if current
+    let revision = current
         .as_ref()
         .and_then(|r| r["revision"].as_i64())
-        .unwrap_or(0)
-        != expected
-    {
-        return Err(conflict("App record revision changed"));
+        .unwrap_or(0);
+    if revision != expected {
+        return Err(Error::revision(revision, "App record revision changed"));
     }
     record_lifecycle::change(e, current.as_ref(), &v["fields"])?;
     if let Some(before) = &current {

@@ -1,28 +1,10 @@
 //! One permission-aware action gateway serves HTTP, UI and MCP; service egress is operator configured.
 use super::*;
-pub(crate) async fn app_tools(a: &App, h: &RequestContext) -> Result<Vec<Value>> {
-    let rows =
-        sqlx::query("SELECT manifest FROM app_packages WHERE tenant=$1 AND active ORDER BY id")
-            .bind(tenant(h)?)
-            .fetch_all(&a.db)
-            .await?;
-    let mut tools = vec![];
-    for r in rows {
-        let m: Manifest =
-            serde_json::from_value(r.get("manifest")).map_err(|_| bad("Invalid package"))?;
-        for action in &m.actions {
-            if verified_kernel::app_tool_admissible(
-                action.mcp != Some(false),
-                action_authorized(a, h, action),
-            ) {
-                tools.push(json!({"name":format!("app.{}.{}",m.id,action.name),"description":action.description,"inputSchema":action.input_schema,"annotations":{"readOnlyHint":(action.read_only || ["list","configurations"].contains(&action.handler.as_str()))}}));
-            }
-        }
-    }
-    Ok(tools)
-}
 pub(crate) fn validate_input(schema: &Value, v: &Value) -> Result<()> {
     input_schema::validate(schema, v)
+}
+pub(crate) fn validate_native_input(schema: &Value, v: &Value) -> Result<()> {
+    input_schema::validate_native(schema, v)
 }
 pub(crate) async fn invoke_app(
     a: &App,
@@ -70,13 +52,13 @@ async fn execute(a: &App, h: &RequestContext, id: &str, name: &str, v: &Value) -
     additional_permissions(h, action)?;
     validate_input(&action.input_schema, v)?;
     if let Some(result) = super::hosted::action(a, &t, id, name).await? {
-        return Ok(result);
+        return tool_contract::checked_output(action, result);
     }
     let e = action
         .entity
         .as_ref()
         .and_then(|n| m.entities.iter().find(|e| e.name == *n));
-    match action.handler.as_str() {
+    let result = match action.handler.as_str() {
         "assets" | "asset_preview" => {
             auth::permit(h, "catalog.read")?;
             assets::app_file_callback(a, h, &action.handler, v).await
@@ -132,7 +114,8 @@ async fn execute(a: &App, h: &RequestContext, id: &str, name: &str, v: &Value) -
             Ok(json!({"eventId":event,"accepted":true}))
         }
         _ => Err(bad("Unsupported app action")),
-    }
+    }?;
+    tool_contract::checked_output(action, result)
 }
 pub(crate) async fn service_call(
     a: &App,

@@ -142,6 +142,9 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
     let mut actions = std::collections::HashSet::new();
     for a in &m.actions {
         input_schema::validate_contract(&a.input_schema)?;
+        if let Some(schema) = &a.output_schema {
+            input_schema::validate_contract(schema)?;
+        }
         if !identifier(&a.name)
             || !actions.insert(&a.name)
             || a.description.len() > 300

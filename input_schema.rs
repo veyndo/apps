@@ -1,33 +1,74 @@
 //! Bounded recursive action-input contract. Untyped managed fields still receive depth/size budgets.
 use super::*;
 const DEPTH: usize = 12;
-const NODES: usize = 2048;
-fn invalid(path: &str, reason: &str) -> Error {
-    bad(format!("Action input {path}: {reason}"))
+#[derive(Clone, Copy)]
+struct Budget {
+    depth: usize,
+    nodes: usize,
+    string: usize,
+    fields: usize,
 }
-fn bounded(v: &Value, depth: usize, left: &mut usize, path: &str) -> Result<()> {
-    if depth > DEPTH || *left == 0 {
+const APP: Budget = Budget {
+    depth: 12,
+    nodes: 2048,
+    string: 8192,
+    fields: 100,
+};
+// Native rich documents count content/array/mark wrappers as well as domain nodes.
+// MCP still has the same 64 KiB request cap; domain validation remains authoritative.
+const NATIVE: Budget = Budget {
+    depth: 32,
+    nodes: 16384,
+    string: 65536,
+    fields: 1000,
+};
+fn invalid(path: &str, reason: &str) -> Error {
+    Error::validation(path, format!("Action input {path}: {reason}"))
+}
+fn pointer_child(path: &str, key: &str) -> String {
+    format!("{path}/{}", key.replace('~', "~0").replace('/', "~1"))
+}
+fn matches_type(kind: &str, v: &Value) -> bool {
+    match kind {
+        "object" => v.is_object(),
+        "array" => v.is_array(),
+        "string" => v.is_string(),
+        "integer" => v.as_i64().is_some(),
+        "number" => v.as_f64().is_some_and(f64::is_finite),
+        "boolean" => v.is_boolean(),
+        "null" => v.is_null(),
+        _ => false,
+    }
+}
+fn bounded(v: &Value, depth: usize, left: &mut usize, path: &str, budget: Budget) -> Result<()> {
+    if depth > budget.depth || *left == 0 {
         return Err(invalid(path, "nested input budget exceeded"));
     }
     *left -= 1;
     match v {
-        Value::String(s) if s.len() > 8192 => {
-            return Err(invalid(path, "string exceeds 8192 bytes"));
+        Value::String(s) if s.len() > budget.string => {
+            return Err(invalid(path, "string exceeds byte budget"));
         }
         Value::Array(values) => {
             if values.len() > 1000 {
                 return Err(invalid(path, "array exceeds 1000 entries"));
             }
             for (i, value) in values.iter().enumerate() {
-                bounded(value, depth + 1, left, &format!("{path}[{i}]"))?;
+                bounded(
+                    value,
+                    depth + 1,
+                    left,
+                    &pointer_child(path, &i.to_string()),
+                    budget,
+                )?;
             }
         }
         Value::Object(values) => {
-            if values.len() > 100 || values.keys().any(|k| k.len() > 100) {
+            if values.len() > budget.fields || values.keys().any(|k| k.len() > 100) {
                 return Err(invalid(path, "object exceeds field budget"));
             }
             for (key, value) in values {
-                bounded(value, depth + 1, left, &format!("{path}.{key}"))?;
+                bounded(value, depth + 1, left, &pointer_child(path, key), budget)?;
             }
         }
         _ => (),
@@ -35,14 +76,11 @@ fn bounded(v: &Value, depth: usize, left: &mut usize, path: &str) -> Result<()> 
     Ok(())
 }
 fn node(schema: &Value, v: &Value, path: &str) -> Result<()> {
-    let valid = match schema["type"].as_str() {
-        Some("object") => v.is_object(),
-        Some("array") => v.is_array(),
-        Some("string") => v.is_string(),
-        Some("integer") => v.as_i64().is_some(),
-        Some("number") => v.as_f64().is_some_and(f64::is_finite),
-        Some("boolean") => v.is_boolean(),
-        Some("null") => v.is_null(),
+    let valid = match schema.get("type") {
+        Some(Value::String(kind)) => matches_type(kind, v),
+        Some(Value::Array(kinds)) => kinds
+            .iter()
+            .any(|kind| kind.as_str().is_some_and(|kind| matches_type(kind, v))),
         None => true,
         _ => false,
     };
@@ -85,42 +123,65 @@ fn node(schema: &Value, v: &Value, path: &str) -> Result<()> {
         }
         if schema["items"].is_object() {
             for (i, v) in values.iter().enumerate() {
-                node(&schema["items"], v, &format!("{path}[{i}]"))?;
+                node(&schema["items"], v, &pointer_child(path, &i.to_string()))?;
             }
         }
     }
     if let Some(values) = v.as_object() {
         let props = schema["properties"].as_object();
-        if schema["required"].as_array().is_some_and(|keys| {
-            keys.iter()
-                .any(|k| k.as_str().is_none_or(|s| !values.contains_key(s)))
-        }) {
-            return Err(invalid(path, "required argument missing"));
+        if let Some(keys) = schema["required"].as_array() {
+            for key in keys {
+                let key = key
+                    .as_str()
+                    .ok_or_else(|| invalid(path, "invalid required field contract"))?;
+                if !values.contains_key(key) {
+                    return Err(invalid(
+                        &pointer_child(path, key),
+                        "required argument missing",
+                    ));
+                }
+            }
         }
         for (key, value) in values {
             if let Some(child) = props.and_then(|p| p.get(key)) {
-                node(child, value, &format!("{path}.{key}"))?;
+                node(child, value, &pointer_child(path, key))?;
             } else if schema["additionalProperties"] == false {
-                return Err(invalid(&format!("{path}.{key}"), "unknown argument"));
+                return Err(invalid(&pointer_child(path, key), "unknown argument"));
             } else if schema["additionalProperties"].is_object() {
                 node(
                     &schema["additionalProperties"],
                     value,
-                    &format!("{path}.{key}"),
+                    &pointer_child(path, key),
                 )?;
             }
         }
     }
     Ok(())
 }
+pub(crate) fn validate_native(schema: &Value, v: &Value) -> Result<()> {
+    if !v.is_object() {
+        return Err(invalid("", "must be an object"));
+    }
+    validate_with_budget(schema, v, NATIVE)
+}
 pub(crate) fn validate(schema: &Value, v: &Value) -> Result<()> {
     if !v.is_object() || v.to_string().len() > 65536 {
-        return Err(bad("Action input must be an object of at most 64 KiB"));
+        return Err(invalid("", "must be an object of at most 64 KiB"));
     }
-    let mut nodes = NODES;
-    bounded(v, 0, &mut nodes, "$")?;
-    node(schema, v, "$")
+    validate_value(schema, v)
 }
+pub(super) fn validate_value(schema: &Value, v: &Value) -> Result<()> {
+    validate_with_budget(schema, v, APP)
+}
+fn validate_with_budget(schema: &Value, v: &Value, budget: Budget) -> Result<()> {
+    if v.to_string().len() > 65536 {
+        return Err(invalid("", "value exceeds 64 KiB"));
+    }
+    let mut nodes = budget.nodes;
+    bounded(v, 0, &mut nodes, "", budget)?;
+    node(schema, v, "")
+}
+
 pub(super) fn validate_contract(schema: &Value) -> Result<()> {
     fn walk(s: &Value, depth: usize) -> Result<()> {
         if depth > DEPTH || !s.is_object() {
@@ -181,8 +242,22 @@ pub(super) fn validate_contract(schema: &Value) -> Result<()> {
                 return Err(bad("Schema lower bound exceeds upper bound"));
             }
         }
-        if s.get("type").is_some_and(|v| !v.is_string())
-            || s.get("properties").is_some_and(|v| !v.is_object())
+        if s.get("type").is_some_and(|v| {
+            !v.is_string()
+                && !v.as_array().is_some_and(|types| {
+                    !types.is_empty()
+                        && types.len() <= 7
+                        && types.iter().enumerate().all(|(i, kind)| {
+                            kind.as_str().is_some_and(|kind| {
+                                [
+                                    "object", "array", "string", "integer", "number", "boolean",
+                                    "null",
+                                ]
+                                .contains(&kind)
+                            }) && !types[..i].contains(kind)
+                        })
+                })
+        }) || s.get("properties").is_some_and(|v| !v.is_object())
             || s.get("additionalProperties")
                 .is_some_and(|v| !v.is_object() && !v.is_boolean())
             || s.get("uniqueItems").is_some_and(|v| !v.is_boolean())
@@ -211,7 +286,12 @@ pub(super) fn validate_contract(schema: &Value) -> Result<()> {
                 walk(&s[key], depth + 1)?;
             }
         }
-        if s["type"] == "array" && !s["items"].is_object() {
+        if (s["type"] == "array"
+            || s["type"]
+                .as_array()
+                .is_some_and(|types| types.contains(&json!("array"))))
+            && !s["items"].is_object()
+        {
             return Err(bad("Arrays require an item schema"));
         }
         Ok(())
@@ -219,42 +299,5 @@ pub(super) fn validate_contract(schema: &Value) -> Result<()> {
     walk(schema, 0)
 }
 #[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn nested_types_choices_and_bounds_are_enforced() {
-        let s = json!({"type":"object","additionalProperties":false,"properties":{"items":{"type":"array","maxItems":2,"items":{"type":"object","additionalProperties":false,"required":["price"],"properties":{"price":{"type":"number","minimum":0,"maximum":5},"name":{"type":"string","maxLength":3}}}}}});
-        assert!(validate(&s, &json!({"items":[{"price":1.25,"name":"abc"}]})).is_ok());
-        for value in [
-            json!({"items":[{"price":"1"}]}),
-            json!({"items":[{"price":-1}]}),
-            json!({"items":[{"price":1,"secret":true}]}),
-            json!({"items":[{"price":1,"name":"long"}]}),
-            json!({"items":[{"price":1},{"price":1},{"price":1}]}),
-        ] {
-            assert!(validate(&s, &value).is_err());
-        }
-    }
-    #[test]
-    fn unsupported_or_malformed_constraints_fail_closed() {
-        for s in [
-            json!({"type":"string","maxLength":"5"}),
-            json!({"type":"number","minimum":5,"maximum":2}),
-            json!({"type":"integer","exclusiveMinimum":0}),
-            json!({"type":"object","required":["missing"]}),
-            json!({"type":"array","items":{"type":"integer"},"uniqueItems":"yes"}),
-        ] {
-            assert!(validate_contract(&s).is_err(), "{s}");
-        }
-    }
-    #[test]
-    fn open_managed_fields_remain_bounded() {
-        let s = json!({"type":"object","properties":{"fields":{"type":"object"}}});
-        let mut v = json!(0);
-        for _ in 0..14 {
-            v = json!({"nested":v});
-        }
-        assert!(validate(&s, &json!({"fields":v})).is_err());
-        assert!(validate(&s, &json!({"fields":{"title":"x".repeat(8193)}})).is_err());
-    }
-}
+#[path = "input_schema_tests.rs"]
+mod tests;
