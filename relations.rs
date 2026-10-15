@@ -42,6 +42,7 @@ pub(super) async fn install(
                     .execute(&mut **tx)
                     .await?;
             }
+            schema_scope::attach(tx, &links).await?;
             let trigger = format!("app_rel_{}", &hash(&f.name)[..16]);
             let exists:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid=to_regclass($1) AND tgname=$2)").bind(format!("public.{source}")).bind(&trigger).fetch_one(&mut **tx).await?;
             if !exists {

@@ -84,6 +84,7 @@ mod ui_logic_types;
 pub(crate) use manifest_validation::validate;
 mod registry;
 mod relations;
+mod schema_scope;
 pub(crate) use relations::drop_preview as drop_preview_relations;
 mod routes;
 mod schema_changes;

@@ -22,7 +22,22 @@ pub(super) async fn execute(
         return Err(conflict("Job package changed; review before retrying"));
     }
     let actor: String = row.get("actor");
-    let membership=sqlx::query("SELECT role,permissions FROM membership_grants WHERE tenant=$1 AND user_id=$2 AND active FOR SHARE").bind(&t).bind(&actor).fetch_optional(&mut *tx).await?.ok_or(Error(StatusCode::FORBIDDEN,"Job creator no longer has access".into()))?;
+    // Lock the scoped base rows, then read the canonical current projection.
+    // FOR SHARE on the read-only view would require a needless UPDATE grant on it.
+    sqlx::query("SELECT m.user_id FROM memberships m JOIN workspace_roles r ON r.tenant=m.tenant AND r.id=m.role WHERE m.tenant=$1 AND m.user_id=$2 FOR SHARE OF m,r")
+        .bind(&t).bind(&actor).fetch_optional(&mut *tx).await?
+        .ok_or(Error(StatusCode::FORBIDDEN,"Job creator no longer has access".into()))?;
+    let membership = sqlx::query(
+        "SELECT role,permissions FROM membership_grants WHERE tenant=$1 AND user_id=$2 AND active",
+    )
+    .bind(&t)
+    .bind(&actor)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or(Error(
+        StatusCode::FORBIDDEN,
+        "Job creator no longer has access".into(),
+    ))?;
     let mut identity = RequestContext::new();
     identity.principal.user = Some(actor);
     identity.principal.role = Some(membership.get("role"));

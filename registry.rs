@@ -13,7 +13,7 @@ pub(crate) async fn package(a: &App, t: &str, id: &str, active: bool) -> Result<
     serde_json::from_value(row.get("manifest")).map_err(|_| bad("Invalid installed manifest"))
 }
 pub(crate) async fn install(a: &App, t: &str, m: Manifest) -> Result<Value> {
-    let mut tx = a.db.begin().await?;
+    let mut tx = a.db.begin_privileged().await?;
     let result = install_tx(&mut tx, t, m).await?;
     tx.commit().await?;
     Ok(result)
@@ -44,6 +44,10 @@ async fn install_inner(
     m: Manifest,
     versions: bool,
 ) -> Result<Value> {
+    sqlx::query("SELECT set_config('rac.tenant',$1,true)")
+        .bind(t)
+        .execute(&mut **tx)
+        .await?;
     validate(&m)?;
     approval::installation(&m)?;
     commerce_hooks::verify_package(&m).await?;
@@ -137,6 +141,7 @@ async fn install_inner(
                 .execute(&mut **tx)
                 .await?;
         }
+        schema_scope::attach(tx, &name).await?;
         for f in &e.fields {
             let present:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 AND column_name=$2)").bind(&name).bind(&f.name).fetch_one(&mut **tx).await?;
             if exists && !present && f.required {
