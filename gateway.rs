@@ -84,8 +84,19 @@ async fn execute(a: &App, h: &RequestContext, id: &str, name: &str, v: &Value) -
         "asset_upload" => Err(bad(
             "Asset uploads require the bounded multipart surface endpoint",
         )),
-        "list" => data::list_page(a, &t, &m, e.ok_or(bad("Entity required"))?, v).await,
-        "save" => data::save(a, &t, &m, e.ok_or(bad("Entity required"))?, v).await,
+        "list" => {
+            data::list_scoped(
+                a,
+                &t,
+                &m,
+                e.ok_or(bad("Entity required"))?,
+                v,
+                action.public.then(|| marketing::channel_id(h)),
+            )
+            .await
+        }
+        "submit" => submissions::submit(a, h, &m, e.ok_or(bad("Entity required"))?, v).await,
+        "save" => data::save(a, &t, &m, e.ok_or(bad("Entity required"))?, v, h).await,
         "configurations" => {
             merchant(a, h)?;
             configurations(a, &t, id).await

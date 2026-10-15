@@ -27,6 +27,7 @@ mod webhooks;
 pub(crate) use schedules::schedule_once;
 pub(crate) use webhook_scope::bind as bind_webhook_scope;
 mod editor_contract;
+pub(crate) use editor_contract::entity_access as record_access;
 #[cfg(test)]
 mod editor_tests;
 mod evidence;
@@ -40,6 +41,7 @@ mod gateway;
 mod input_schema;
 mod job_callbacks;
 mod jobs;
+pub(crate) mod record_history;
 mod record_lifecycle;
 pub(crate) use approval::print_digest;
 pub(crate) mod hosted;
@@ -64,6 +66,12 @@ mod native_data;
 mod native_view_tests;
 mod native_views;
 mod presentation;
+mod publication;
+#[path = "../../extensions/apps/site-builder/server.rs"]
+pub(crate) mod site_builder;
+#[path = "../../extensions/apps/site-forms/server.rs"]
+mod site_forms;
+mod submissions;
 mod ui_logic;
 #[cfg(test)]
 mod ui_logic_tests;

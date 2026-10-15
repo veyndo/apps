@@ -11,6 +11,16 @@ pub(crate) async fn list_page(
     e: &Entity,
     input: &Value,
 ) -> Result<Value> {
+    list_scoped(a, t, m, e, input, None).await
+}
+pub(super) async fn list_scoped(
+    a: &App,
+    t: &str,
+    m: &Manifest,
+    e: &Entity,
+    input: &Value,
+    public_channel: Option<&str>,
+) -> Result<Value> {
     if !m.permissions.contains(&"data.read".into()) {
         return Err(Error(StatusCode::FORBIDDEN, "App needs data.read".into()));
     }
@@ -85,6 +95,9 @@ pub(crate) async fn list_page(
                 .push(format!("::{kind}"));
         }
     }
+    if let Some(channel) = public_channel {
+        publication::predicate(&mut query, e, channel);
+    }
     query
         .push(" ORDER BY id LIMIT ")
         .push_bind(limit + 1)
@@ -142,8 +155,16 @@ pub(crate) async fn record_revision(
     tx.commit().await?;
     Ok(revision.unwrap_or(0))
 }
-pub(crate) async fn save(a: &App, t: &str, m: &Manifest, e: &Entity, v: &Value) -> Result<Value> {
+pub(crate) async fn save(
+    a: &App,
+    t: &str,
+    m: &Manifest,
+    e: &Entity,
+    v: &Value,
+    h: &RequestContext,
+) -> Result<Value> {
     let mut tx = a.db.begin().await?;
+    history::context(&mut tx, h, "app.save").await?;
     let result = save_tx(&mut tx, t, m, e, v).await?;
     tx.commit().await?;
     Ok(result)
@@ -159,7 +180,18 @@ pub(crate) async fn save_tx(
         return Err(Error(StatusCode::FORBIDDEN, "App needs data.write".into()));
     }
     super::lock_package_write(tx, t, m).await?;
+    let normalized;
+    let v = if m.id == "site_builder" {
+        normalized = json!({"id":v["id"],"revision":v["revision"],"fields":site_builder::normalize(&v["fields"])?});
+        &normalized
+    } else {
+        v
+    };
     fields(e, &v["fields"])?;
+    if m.id == "site_builder" {
+        site_builder::validate(&e.name, &v["fields"])?;
+        site_builder::validate_owned(tx, t, &v["fields"], v["id"].as_str().unwrap_or("")).await?;
+    }
     super::editor_contract::validate_references(tx, t, e, &v["fields"]).await?;
     field_values::references(tx, t, e, &v["fields"]).await?;
     if e.fields
@@ -205,6 +237,14 @@ pub(crate) async fn save_tx(
         return Err(conflict("App record revision changed"));
     }
     record_lifecycle::change(e, current.as_ref(), &v["fields"])?;
+    if let Some(before) = &current {
+        let prior: Value = e
+            .fields
+            .iter()
+            .map(|f| (f.name.clone(), before[&f.name].clone()))
+            .collect();
+        record_history::capture(tx, t, m, e, id, expected, &prior).await?;
+    }
     let names = e.fields.iter().map(|f| column(&f.name)).collect::<Vec<_>>();
     let expressions = e
         .fields
@@ -243,6 +283,7 @@ pub(crate) async fn save_tx(
         .bind(json!({"app":m.id,"entity":e.name,"id":id,"revision":revision}))
         .execute(&mut **tx)
         .await?;
+    record_history::capture(tx, t, m, e, id, revision, &v["fields"]).await?;
     Ok(json!({"id":id,"revision":revision,"fields":v["fields"]}))
 }
 #[cfg(test)]
@@ -254,6 +295,7 @@ mod tests {
             name: "config".into(),
             label: HashMap::new(),
             public_read: false,
+            publication: None,
             workflow: None,
             fields: vec![Field {
                 name: "fee".into(),

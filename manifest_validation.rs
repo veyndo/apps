@@ -72,6 +72,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
     }
     let mut names = std::collections::HashSet::new();
     for e in &m.entities {
+        publication::validate(e)?;
         if !identifier(&e.name)
             || !names.insert(&e.name)
             || e.fields.is_empty()
@@ -140,6 +141,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
                 "service",
                 "configurations",
                 "emit",
+                "submit",
                 "payment_onboarding",
                 "payment_command",
                 "job",
@@ -196,10 +198,22 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
         {
             return Err(bad("Invalid app action"));
         }
-        if ["list", "save"].contains(&a.handler.as_str()) && a.entity.is_none() {
+        if a.handler == "submit"
+            && (!a.public
+                || a.read_only
+                || a.flow_allowed
+                || a.entity
+                    .as_ref()
+                    .is_none_or(|n| !m.entities.iter().any(|e| e.name == *n && !e.public_read))
+                || !m.permissions.iter().any(|p| p == "data.write"))
+        {
+            return Err(bad("Submit requires an append-only private entity"));
+        }
+        if ["list", "save", "submit"].contains(&a.handler.as_str()) && a.entity.is_none() {
             return Err(bad("Entity action requires entity"));
         }
         if a.public
+            && a.handler != "submit"
             && a.entity
                 .as_ref()
                 .is_some_and(|n| !m.entities.iter().any(|e| e.name == *n && e.public_read))

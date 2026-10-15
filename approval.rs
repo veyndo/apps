@@ -2,6 +2,12 @@
 use super::*;
 pub(super) fn built_in(id: &str) -> Option<&'static str> {
     match id {
+        "site_builder" => Some(include_str!(
+            "../../extensions/apps/site-builder/manifest.json"
+        )),
+        "site_forms" => Some(include_str!(
+            "../../extensions/apps/site-forms/manifest.json"
+        )),
         "marketplaces" => Some(include_str!(
             "../../extensions/apps/marketplaces/manifest.json"
         )),

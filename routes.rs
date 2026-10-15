@@ -4,6 +4,7 @@ pub(crate) fn app_router() -> Router<App> {
     Router::new()
         .merge(super::webhooks::router())
         .merge(evidence_routes::router())
+        .merge(record_history::router())
         .merge(observability::router())
         .merge(surfaces::router())
         .merge(surface_grants::router())
@@ -61,7 +62,7 @@ async fn app_list(State(a): State<App>, h: RequestContext) -> Result<Json<Value>
         .collect();
     Ok(Json(json!({
         "apiVersion":"1", "mainLocale":config.main_locale, "packages":packages,
-        "builtIns":["marketplaces","engraving","paypal","shopware_payments","storyfront","google_analytics","gmail","slack","email"],
+        "builtIns":["site_builder","site_forms","marketplaces","engraving","paypal","shopware_payments","storyfront","google_analytics","gmail","slack","email"],
         "serviceExecution":"digest-approved external services and bounded typed Wasm commerce hooks"
     })))
 }
@@ -205,7 +206,7 @@ async fn entity_save(
         .find(|e| e.name == name)
         .ok_or(bad("Unknown entity"))?;
     super::editor_contract::entity_access(&m, e, &h, "save")?;
-    Ok(Json(data::save(&a, &t, &m, e, &v).await?))
+    Ok(Json(data::save(&a, &t, &m, e, &v, &h).await?))
 }
 async fn slots(State(a): State<App>, h: RequestContext) -> Result<Json<Value>> {
     let rows = sqlx::query("SELECT manifest FROM app_packages WHERE tenant=$1 AND active")

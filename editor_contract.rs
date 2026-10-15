@@ -96,12 +96,22 @@ pub(super) fn validate_binding(
     Ok(())
 }
 /// The generic entity endpoint cannot bypass stricter action permissions.
-pub(super) fn entity_access(
+pub(crate) fn entity_access(
     m: &Manifest,
     e: &Entity,
     h: &RequestContext,
     handler: &str,
 ) -> Result<()> {
+    if handler == "save"
+        && m.actions
+            .iter()
+            .any(|a| a.handler == "submit" && a.entity.as_deref() == Some(e.name.as_str()))
+    {
+        return Err(Error(
+            StatusCode::FORBIDDEN,
+            "Append-only form inbox cannot be edited or restored".into(),
+        ));
+    }
     for action in m
         .actions
         .iter()

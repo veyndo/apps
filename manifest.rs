@@ -99,6 +99,8 @@ pub(crate) struct Entity {
     #[serde(default)]
     pub public_read: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub publication: Option<super::publication::Publication>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workflow: Option<super::record_lifecycle::Workflow>,
 }
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
@@ -241,6 +243,8 @@ mod tests {
             include_str!("../../extensions/apps/gmail/manifest.json"),
             include_str!("../../extensions/apps/slack/manifest.json"),
             include_str!("../../extensions/apps/email/manifest.json"),
+            include_str!("../../extensions/apps/site-builder/manifest.json"),
+            include_str!("../../extensions/apps/site-forms/manifest.json"),
         ] {
             validate(&serde_json::from_str(s).unwrap()).unwrap();
         }

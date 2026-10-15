@@ -31,7 +31,7 @@ async fn no_store(request: axum::extract::Request, next: axum::middleware::Next)
 pub(crate) fn readonly(action: &Action) -> bool {
     verified_kernel::app_read_admissible(
         action.read_only || ["list", "configurations"].contains(&action.handler.as_str()),
-        ["save", "emit"].contains(&action.handler.as_str()),
+        ["save", "emit", "submit"].contains(&action.handler.as_str()),
     )
 }
 pub(crate) fn validate_contract(m: &Manifest) -> Result<()> {
@@ -152,9 +152,13 @@ async fn registry(a: &App, h: &RequestContext, public: bool) -> Result<Value> {
             .fetch_all(&a.db)
             .await?;
     let mut surfaces = vec![];
+    let mut public_apps = vec![];
     for row in rows {
         let m: Manifest =
             serde_json::from_value(row.get("manifest")).map_err(|_| bad("Invalid app package"))?;
+        if m.actions.iter().any(|act| act.public) {
+            public_apps.push(m.id.clone());
+        }
         for s in &m.surfaces {
             if s.location.starts_with("admin.") == public
                 || s.permission
@@ -205,7 +209,7 @@ async fn registry(a: &App, h: &RequestContext, public: bool) -> Result<Value> {
             }
         }
     }
-    Ok(json!({"surfaces":surfaces}))
+    Ok(json!({"surfaces":surfaces,"publicApps":public_apps,"mainLocale":settings.main_locale}))
 }
 async fn admin_surfaces(State(a): State<App>, h: RequestContext) -> Result<Json<Value>> {
     Ok(Json(registry(&a, &h, false).await?))

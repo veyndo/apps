@@ -29,6 +29,9 @@ pub(crate) async fn planning_context(a: &App, t: &str, h: &RequestContext) -> Re
                         act.handler == "list"
                             && act.entity.as_deref() == Some(e.name.as_str())
                             && gateway::action_authorized(a, h, act)
+                            && m.intelligence
+                                .as_ref()
+                                .is_none_or(|ai| ai.tools.contains(&act.name))
                     }) && m
                         .intelligence
                         .as_ref()
@@ -36,7 +39,27 @@ pub(crate) async fn planning_context(a: &App, t: &str, h: &RequestContext) -> Re
                 })
                 .take(4)
             {
-                let mut data = data::list_page(a, t, &m, e, &json!({"limit":12})).await?;
+                let reader = m
+                    .actions
+                    .iter()
+                    .find(|act| {
+                        act.handler == "list"
+                            && act.entity.as_deref() == Some(e.name.as_str())
+                            && gateway::action_authorized(a, h, act)
+                            && m.intelligence
+                                .as_ref()
+                                .is_none_or(|ai| ai.tools.contains(&act.name))
+                    })
+                    .ok_or(bad("No authorized app reader"))?;
+                let mut data = data::list_scoped(
+                    a,
+                    t,
+                    &m,
+                    e,
+                    &json!({"limit":12}),
+                    reader.public.then(|| marketing::channel_id(h)),
+                )
+                .await?;
                 data["elements"] = json!(
                     data["elements"]
                         .as_array()
@@ -93,7 +116,7 @@ pub(crate) async fn bind_change(
     c: &mut AppChange,
     h: &RequestContext,
 ) -> Result<()> {
-    if c.arguments_json.len() > 2000 {
+    if c.arguments_json.len() > 32768 {
         return Err(bad("App change too large"));
     }
     let row = sqlx::query(
