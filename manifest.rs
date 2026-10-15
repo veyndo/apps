@@ -1,4 +1,4 @@
-//! Strict package contract; identifiers and limits are checked before any schema DDL.
+//! Strict package contract; identifiers and limits are checked before logical model registration.
 use super::*;
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -174,14 +174,6 @@ pub(crate) fn identifier(s: &str) -> bool {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'_')
         && s.as_bytes()[0].is_ascii_lowercase()
 }
-/// Quote a contract-validated field so SQL keywords remain usable as app field names.
-pub(crate) fn column(name: &str) -> String {
-    // Escape even an invalid/internal name; admission still applies the closed identifier grammar.
-    format!("\"{}\"", name.replace('"', "\"\""))
-}
-pub(crate) fn table(tenant: &str, app: &str, entity: &str) -> String {
-    format!("app_{}_{}", &hash(&format!("{tenant}:{app}"))[..24], entity)
-}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,12 +190,6 @@ mod tests {
         ] {
             assert!(!identifier(s));
         }
-    }
-    #[test]
-    fn quoted_sql_names_escape_every_embedded_delimiter() {
-        assert_eq!(column("order"), "\"order\"");
-        assert_eq!(column("x\"; SELECT 1; --"), "\"x\"\"; SELECT 1; --\"");
-        assert!(!identifier("x\"; SELECT 1; --"));
     }
     #[test]
     fn order_configurations_are_never_public() {

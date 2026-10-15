@@ -1,7 +1,7 @@
 //! Versioned merchant intent and frozen, executable pure-decision examples in the canonical app package.
 use super::*;
 use veyndo::component_runtime as wit;
-mod snapshot;
+pub(crate) mod snapshot;
 #[cfg(test)]
 mod tests;
 #[derive(Clone, Serialize, Deserialize)]

@@ -1,4 +1,4 @@
-//! Managed app tables: typed writes, optimistic revisions, bounded reads and local RLS context.
+//! Shared managed app records: typed writes, optimistic revisions, bounded reads and local RLS context.
 use super::*;
 pub(crate) fn fields(e: &Entity, v: &Value) -> Result<()> {
     field_values::validate(e, v)
@@ -32,18 +32,17 @@ pub(super) async fn list_scoped(
     if after.len() > 100 {
         return Err(bad("App cursor exceeds limit"));
     }
-    let columns = e
-        .fields
-        .iter()
-        .map(|f| crate::apps::column(&f.name))
-        .collect::<Vec<_>>()
-        .join(",");
-    let prefix = format!(
-        "SELECT to_jsonb(r) AS data FROM (SELECT id,revision,{columns} FROM public.{} WHERE tenant=",
-        table(t, &m.id, &e.name)
+    let mut query = sqlx::QueryBuilder::<sqlx::Postgres>::new(
+        "SELECT fields||jsonb_build_object('id',id,'revision',revision) AS data FROM app_records r WHERE tenant=",
     );
-    let mut query = sqlx::QueryBuilder::<sqlx::Postgres>::new(prefix);
-    query.push_bind(t).push(" AND id > ").push_bind(after);
+    query
+        .push_bind(t)
+        .push(" AND app=")
+        .push_bind(&m.id)
+        .push(" AND entity=")
+        .push_bind(&e.name)
+        .push(" AND id > ")
+        .push_bind(after);
     if let Some(id) = input.get("id") {
         let id = id
             .as_str()
@@ -64,44 +63,24 @@ pub(super) async fn list_scoped(
                 .iter()
                 .find(|f| f.name == *name && f.indexed && !f.translatable)
                 .ok_or(bad("Filter requires an indexed field"))?;
-            let (kind, text) = match f.kind.as_str() {
-                "string" => (
-                    "text",
-                    value
-                        .as_str()
-                        .filter(|s| s.len() <= 2000)
-                        .ok_or(bad("String filter required"))?
-                        .to_owned(),
-                ),
-                "integer" => (
-                    "bigint",
-                    value
-                        .as_i64()
-                        .ok_or(bad("Integer filter required"))?
-                        .to_string(),
-                ),
-                "boolean" => (
-                    "boolean",
-                    value
-                        .as_bool()
-                        .ok_or(bad("Boolean filter required"))?
-                        .to_string(),
-                ),
-                _ => return Err(bad("Unsupported app filter")),
+            let valid = match f.kind.as_str() {
+                "string" => value.as_str().is_some_and(|v| v.len() <= 2000),
+                "integer" => value.as_i64().is_some(),
+                "boolean" => value.is_boolean(),
+                _ => false,
             };
-            query
-                .push(format!(" AND {} = ", column(&f.name)))
-                .push_bind(text)
-                .push(format!("::{kind}"));
+            if !valid {
+                return Err(bad("Invalid indexed app filter"));
+            }
+            query.push(" AND EXISTS(SELECT 1 FROM app_record_indexes ix WHERE ix.tenant=r.tenant AND ix.app=r.app AND ix.entity=r.entity AND ix.record_id=r.id AND ix.field=")
+                .push_bind(&f.name).push(" AND ix.value_hash=sha256(jsonb_send(").push_bind(value.clone())
+                .push("::jsonb)) AND ix.value=").push_bind(value.clone()).push("::jsonb)");
         }
     }
     if let Some(channel) = public_channel {
         publication::predicate(&mut query, e, channel);
     }
-    query
-        .push(" ORDER BY id LIMIT ")
-        .push_bind(limit + 1)
-        .push(") r");
+    query.push(" ORDER BY id LIMIT ").push_bind(limit + 1);
     let mut tx = a.db.begin().await?;
     sqlx::query("SELECT set_config('rac.tenant',$1,true)")
         .bind(t)
@@ -113,7 +92,7 @@ pub(super) async fn list_scoped(
     let elements = rows
         .iter()
         .take(limit as usize)
-        .map(|r| r.get::<Value, _>("data"))
+        .map(|r| records::project(e, &r.get::<Value, _>("data")))
         .collect::<Vec<_>>();
     let next = if has_more {
         elements.last().and_then(|r| r["id"].as_str())
@@ -143,15 +122,9 @@ pub(crate) async fn record_revision(
         .bind(t)
         .execute(&mut *tx)
         .await?;
-    let sql = format!(
-        "SELECT revision FROM public.{} WHERE tenant=$1 AND id=$2",
-        table(t, &m.id, &e.name)
-    );
-    let revision = sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(sql.as_str()))
-        .bind(t)
-        .bind(id)
-        .fetch_optional(&mut *tx)
-        .await?;
+    let revision = records::get(&mut tx, t, &m.id, &e.name, id, false)
+        .await?
+        .and_then(|row| row["revision"].as_i64());
     tx.commit().await?;
     Ok(revision.unwrap_or(0))
 }
@@ -212,22 +185,16 @@ pub(crate) async fn save_tx(
         .filter(|s| !s.is_empty() && s.len() <= 100)
         .ok_or(bad("Record id required"))?;
     let expected = v["revision"].as_i64().unwrap_or(0);
-    let name = table(t, &m.id, &e.name);
+    let key = records::lock_key(t, &m.id, &e.name, id);
     sqlx::query("SELECT set_config('rac.tenant',$1,true)")
         .bind(t)
         .execute(&mut **tx)
         .await?;
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,8))")
-        .bind(format!("{t}:{name}:{id}"))
+        .bind(key)
         .execute(&mut **tx)
         .await?;
-    let sql =
-        format!("SELECT to_jsonb(r) FROM public.{name} r WHERE tenant=$1 AND id=$2 FOR UPDATE");
-    let current: Option<Value> = sqlx::query_scalar(sqlx::AssertSqlSafe(sql.as_str()))
-        .bind(t)
-        .bind(id)
-        .fetch_optional(&mut **tx)
-        .await?;
+    let current = records::get(tx, t, &m.id, &e.name, id, true).await?;
     let revision = current
         .as_ref()
         .and_then(|r| r["revision"].as_i64())
@@ -244,39 +211,8 @@ pub(crate) async fn save_tx(
             .collect();
         record_history::capture(tx, t, m, e, id, expected, &prior).await?;
     }
-    let names = e.fields.iter().map(|f| column(&f.name)).collect::<Vec<_>>();
-    let expressions = e
-        .fields
-        .iter()
-        .map(|f| {
-            if field_values::json(f) {
-                format!("$3->'{}'", f.name)
-            } else {
-                match f.kind.as_str() {
-                    "integer" => format!("($3->>'{}')::bigint", f.name),
-                    "boolean" => format!("($3->>'{}')::boolean", f.name),
-                    "json" => format!("NULLIF($3->'{}','null'::jsonb)", f.name),
-                    _ => format!("$3->>'{}'", f.name),
-                }
-            }
-        })
-        .collect::<Vec<_>>();
-    let sets = names
-        .iter()
-        .map(|n| format!("{n}=EXCLUDED.{n}"))
-        .collect::<Vec<_>>()
-        .join(",");
-    let sql = format!(
-        "INSERT INTO public.{name}(tenant,id,{}) VALUES($1,$2,{}) ON CONFLICT(tenant,id) DO UPDATE SET {sets},revision={name}.revision+1 RETURNING revision",
-        names.join(","),
-        expressions.join(",")
-    );
-    let revision: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(sql.as_str()))
-        .bind(t)
-        .bind(id)
-        .bind(&v["fields"])
-        .fetch_one(&mut **tx)
-        .await?;
+    let revision = revision + 1;
+    records::put(tx, t, &m.id, &e.name, id, revision, &v["fields"]).await?;
     sqlx::query("INSERT INTO outbox(tenant,kind,data) VALUES($1,'app.record.changed',$2)")
         .bind(t)
         .bind(json!({"app":m.id,"entity":e.name,"id":id,"revision":revision}))

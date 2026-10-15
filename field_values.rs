@@ -17,17 +17,6 @@ pub(super) const KINDS: &[&str] = &[
 pub(super) fn json(f: &Field) -> bool {
     f.translatable || matches!(f.kind.as_str(), "json" | "money" | "richtext" | "relations")
 }
-pub(super) fn sql_kind(f: &Field) -> &'static str {
-    if json(f) {
-        "jsonb"
-    } else {
-        match f.kind.as_str() {
-            "integer" => "bigint",
-            "boolean" => "boolean",
-            _ => "text",
-        }
-    }
-}
 pub(super) fn contract(e: &Entity) -> Result<()> {
     record_lifecycle::contract(e)?;
     for f in &e.fields {

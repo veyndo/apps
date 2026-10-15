@@ -53,21 +53,15 @@ pub(crate) async fn configure(a: &App, h: &RequestContext, id: &str, v: &Value) 
     if !exists {
         return Err(bad("Unknown product"));
     }
-    let sql = format!(
-        "SELECT {},revision FROM public.{} WHERE tenant=$1 AND id=$2 FOR SHARE",
-        column(&contract.price_field),
-        table(&t, id, &contract.entity)
-    );
-    let rule = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
-        .bind(&t)
-        .bind(&contract.record)
-        .fetch_optional(&mut *tx)
+    let rule = records::get(&mut tx, &t, id, &contract.entity, &contract.record, false)
         .await?
         .ok_or(bad("App configuration data missing"))?;
     let fee = runtime::prepared_contribution(
         guest,
         contract,
-        rule.get(&*contract.price_field),
+        rule[&contract.price_field]
+            .as_i64()
+            .ok_or(bad("App price missing"))?,
         input.chars().count() as i64,
     )
     .await?;
@@ -79,7 +73,9 @@ pub(crate) async fn configure(a: &App, h: &RequestContext, id: &str, v: &Value) 
             product_id: product.into(),
             fields: v["fields"].clone(),
             fee_minor: fee,
-            rule_revision: rule.get("revision"),
+            rule_revision: rule["revision"]
+                .as_i64()
+                .ok_or(bad("App revision missing"))?,
             app_version: m.version,
             entity: contract.entity.clone(),
             record: contract.record.clone(),
@@ -123,24 +119,25 @@ pub(crate) async fn validate_configurations(
         {
             return Err(conflict("App changed; configure again"));
         }
-        let sql = format!(
-            "SELECT {},revision FROM public.{} WHERE tenant=$1 AND id=$2 FOR SHARE",
-            column(&contract.price_field),
-            table(&c.tenant, &config.app, &contract.entity)
-        );
-        let r = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
-            .bind(&c.tenant)
-            .bind(&config.record)
-            .fetch_optional(&mut **tx)
-            .await?
-            .ok_or(conflict("Configuration rules missing"))?;
+        let r = records::get(
+            tx,
+            &c.tenant,
+            &config.app,
+            &contract.entity,
+            &config.record,
+            false,
+        )
+        .await?
+        .ok_or(conflict("Configuration rules missing"))?;
         let fee = runtime::prepared_contribution(
             prepared
                 .get(&hash(&contract.wasm_source))
                 .cloned()
                 .ok_or(conflict("Cart app modules changed; retry checkout"))?,
             contract,
-            r.get(&*contract.price_field),
+            r[&contract.price_field]
+                .as_i64()
+                .ok_or(bad("App price missing"))?,
             config.fields[&contract.input_field]
                 .as_str()
                 .unwrap_or("")
@@ -148,7 +145,9 @@ pub(crate) async fn validate_configurations(
                 .count() as i64,
         )
         .await?;
-        if r.get::<i64, _>("revision") != config.rule_revision || fee != config.fee_minor {
+        if r["revision"].as_i64().ok_or(bad("App revision missing"))? != config.rule_revision
+            || fee != config.fee_minor
+        {
             return Err(conflict("App price changed; configure again"));
         }
     }

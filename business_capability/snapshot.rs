@@ -44,6 +44,21 @@ pub(crate) struct Record {
     pub revision: u64,
     pub fields: Value,
 }
+impl Record {
+    pub(crate) fn to_wit(&self) -> ((String, String), wit::AppRecord) {
+        let mut fields = self.fields.clone();
+        fields["id"] = json!(self.id);
+        fields["revision"] = json!(self.revision);
+        (
+            (self.entity.clone(), self.id.clone()),
+            wit::AppRecord {
+                id: self.id.clone(),
+                revision: self.revision,
+                fields_json: fields.to_string(),
+            },
+        )
+    }
+}
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Frozen {
@@ -150,25 +165,7 @@ impl Frozen {
                     )
                 })
                 .collect(),
-            records: self
-                .records
-                .iter()
-                .map(|r| {
-                    (
-                        (r.entity.clone(), r.id.clone()),
-                        wit::AppRecord {
-                            id: r.id.clone(),
-                            revision: r.revision,
-                            fields_json: {
-                                let mut fields = r.fields.clone();
-                                fields["id"] = json!(r.id);
-                                fields["revision"] = json!(r.revision);
-                                fields.to_string()
-                            },
-                        },
-                    )
-                })
-                .collect(),
+            records: self.records.iter().map(Record::to_wit).collect(),
         }
     }
 }

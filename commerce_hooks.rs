@@ -188,14 +188,7 @@ pub(crate) async fn apply(
             .ok_or(conflict("Commerce hooks changed; review checkout again"))?;
         let mut records = HashMap::new();
         for r in &contract.records {
-            let name = table(&c.tenant, &m.id, &r.entity);
-            let sql = format!(
-                "SELECT to_jsonb(x) AS data FROM public.{name} x WHERE tenant=$1 AND id=$2 FOR SHARE"
-            );
-            let value: Value = sqlx::query_scalar(sqlx::AssertSqlSafe(sql.as_str()))
-                .bind(&c.tenant)
-                .bind(&r.id)
-                .fetch_optional(&mut *conn)
+            let value = super::records::get(conn, &c.tenant, &m.id, &r.entity, &r.id, false)
                 .await?
                 .ok_or(conflict("Hook record missing"))?;
             let revision = value["revision"]

@@ -4,7 +4,7 @@ This folder owns the Rust modules listed below. Each source begins with its resp
 
 - [`cart_contributions.rs`](cart_contributions.rs): Generic app contributions: configure a cart, bind package/data revisions and persist audited pricing inputs.
 - [`compatibility.rs`](compatibility.rs): Explicit read adapter for persisted v0.5 engraving carts; completed order snapshots remain unchanged.
-- [`data.rs`](data.rs): Managed app tables: typed writes, optimistic revisions, bounded reads and local RLS context.
+- [`data.rs`](data.rs): Shared app records: typed writes, optimistic revisions, bounded reads and local RLS context.
 - [`editor_contract.rs`](editor_contract.rs): Editor mounts, enumerated fields and tenant-owned core references; no app alters core tables.
 - [`editor_tests.rs`](editor_tests.rs): Assistant fixture contracts exercise real validation, not only the client-side builder.
 - [`events.rs`](events.rs): Durable at-least-once app events, retry leases and stable event idempotency keys.
@@ -12,7 +12,7 @@ This folder owns the Rust modules listed below. Each source begins with its resp
 - [`evidence_routes.rs`](evidence_routes.rs): Scoped merchant-only evidence retrieval; sources never enter public product answers.
 - [`gateway.rs`](gateway.rs): One permission-aware action gateway serves HTTP, UI and MCP; service egress is operator configured.
 - [`service_policy.rs`](service_policy.rs): Exact operator-owned transport admission; the extracted predicate rejects unsafe URLs and unapproved HTTP origins.
-- [`manifest.rs`](manifest.rs): Strict package contract; identifiers and limits are checked before any schema DDL.
+- [`manifest.rs`](manifest.rs): Strict package contract; identifiers and limits are checked before model registration.
 - [`manifest_validation.rs`](manifest_validation.rs): Package capability, schema and action validation; no executable behavior is inferred from names.
 - [`mod.rs`](mod.rs): Versioned app packages: managed data, UI slots, agent tools and isolated service calls.
 - [`native_data.rs`](native_data.rs): App record translations use configured shop languages and field-level main-language inheritance.
@@ -21,6 +21,7 @@ This folder owns the Rust modules listed below. Each source begins with its resp
 - [`planning.rs`](planning.rs): Registered managed app actions join the same preview/approve transaction as core changes.
 - [`presentation.rs`](presentation.rs): Optional passive app artwork and localized summaries; omitted metadata preserves published legacy digests.
 - [`registry.rs`](registry.rs): Atomic installation and additive schema upgrades; immutable version digests preserve history.
+- [`records.rs`](records.rs): One fixed shared store with tenant/app/model identity, field projection, typed model registration and scoped preview resets; no per-installation DDL.
 - [`routes.rs`](routes.rs): Tenant-scoped package lifecycle, generated data endpoints and a shared action adapter.
 - [`runtime.rs`](runtime.rs): Generic pure-Wasm contribution executor; the installed package supplies all business predicates.
 - [`schedules.rs`](schedules.rs): Durable UTC cron ticks emit namespaced outbox events; replicas lock due rows and staging never runs them.

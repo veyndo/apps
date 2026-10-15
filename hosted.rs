@@ -49,7 +49,7 @@ pub(crate) async fn ensure(
     Ok(())
 }
 
-/// Migration 055 runs once under the migration lock; normal reads never install apps.
+/// Runs after shared-storage consolidation under the migration lock; normal reads never install apps.
 pub(crate) async fn backfill(tx: &mut Transaction<'_, Postgres>) -> Result<()> {
     let tenants: Vec<String> = sqlx::query_scalar(
         "SELECT DISTINCT tenant FROM hosted_frontends WHERE app_id='storyfront' ORDER BY tenant",

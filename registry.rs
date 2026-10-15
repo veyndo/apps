@@ -91,7 +91,7 @@ async fn install_inner(
     {
         return Err(conflict("Published app version is immutable"));
     }
-    // Each tenant owns a separate physical schema; only its own versions constrain upgrades.
+    // Each shop owns logical model contracts; only its own versions constrain upgrades.
     if versions
         && let Some(row) =
             sqlx::query("SELECT manifest FROM app_packages WHERE tenant=$1 AND id=$2")
@@ -114,130 +114,22 @@ async fn install_inner(
         }
         schema_upgrade::upgrade(tx, t, &old, &m).await?;
     }
-    for e in &m.entities {
-        let name = table(t, &m.id, &e.name);
-        let exists: bool = sqlx::query_scalar("SELECT to_regclass($1) IS NOT NULL")
-            .bind(format!("public.{name}"))
-            .fetch_one(&mut **tx)
-            .await?;
-        let ddl = format!(
-            "CREATE TABLE IF NOT EXISTS public.{name}(tenant text NOT NULL REFERENCES public.tenants(id),id text NOT NULL,revision bigint NOT NULL DEFAULT 1,PRIMARY KEY(tenant,id))"
-        );
-        sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
-            .execute(&mut **tx)
-            .await?;
-        let ddl = format!(
-            "ALTER TABLE public.{name} ENABLE ROW LEVEL SECURITY; ALTER TABLE public.{name} FORCE ROW LEVEL SECURITY"
-        );
-        sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
-            .execute(&mut **tx)
-            .await?;
-        let policy:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename=$1 AND policyname='tenant_scope')").bind(&name).fetch_one(&mut **tx).await?;
-        if !policy {
-            let ddl = format!(
-                "CREATE POLICY tenant_scope ON public.{name} USING(tenant=current_setting('rac.tenant',true)) WITH CHECK(tenant=current_setting('rac.tenant',true))"
-            );
-            sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
-                .execute(&mut **tx)
-                .await?;
-        }
-        schema_scope::attach(tx, &name).await?;
-        for f in &e.fields {
-            let present:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 AND column_name=$2)").bind(&name).bind(&f.name).fetch_one(&mut **tx).await?;
-            if exists && !present && f.required {
-                return Err(conflict(
-                    "New required field needs a data migration; add it nullable first",
-                ));
-            }
-            let kind = field_values::sql_kind(f);
-            let ddl = format!(
-                "ALTER TABLE public.{name} ADD COLUMN IF NOT EXISTS {} {kind} {}",
-                column(&f.name),
-                if f.required { "NOT NULL" } else { "" }
-            );
-            sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
-                .execute(&mut **tx)
-                .await?;
-            if f.indexed || f.unique {
-                let ddl = format!(
-                    "CREATE {} INDEX IF NOT EXISTS idx_{} ON public.{name}(tenant,{})",
-                    if f.unique { "UNIQUE" } else { "" },
-                    &hash(&format!("{name}:{}:{}", f.name, f.unique))[..20],
-                    column(&f.name)
-                );
-                sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
-                    .execute(&mut **tx)
-                    .await?;
-            }
-        }
-    }
-    for e in &m.entities {
-        for f in &e.fields {
-            let target = if matches!(f.kind.as_str(), "image" | "file") {
-                Some("product_assets".to_owned())
-            } else if let Some(kind) = f.core_reference.as_deref() {
-                Some(
-                    match kind {
-                        "product" => "products",
-                        "customer" => "customers",
-                        "order" => "orders",
-                        "salesChannel" => "sales_channels",
-                        "b2bCompany" => "b2b_companies",
-                        "b2bUnit" => "b2b_units",
-                        _ => return Err(bad("Unknown core reference")),
-                    }
-                    .to_owned(),
-                )
-            } else {
-                f.references.as_ref().map(|target| table(t, &m.id, target))
-            };
-            if let Some(target) = target.filter(|_| f.kind != "relations") {
-                let name = table(t, &m.id, &e.name);
-                let constraint = format!("fk_{}", &hash(&format!("{name}:{}", f.name))[..20]);
-                let exists: bool = sqlx::query_scalar(
-                    "SELECT EXISTS(SELECT 1 FROM pg_constraint WHERE conname=$1)",
-                )
-                .bind(&constraint)
-                .fetch_one(&mut **tx)
-                .await?;
-                if !exists {
-                    let ddl = format!(
-                        "ALTER TABLE public.{name} ADD CONSTRAINT {constraint} FOREIGN KEY(tenant,{}) REFERENCES public.{}(tenant,id)",
-                        column(&f.name),
-                        target
-                    );
-                    sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
-                        .execute(&mut **tx)
-                        .await?;
-                }
-            }
-        }
-    }
-    relations::install(tx, t, &m).await?;
+    sqlx::query("INSERT INTO app_packages(tenant,id,version,manifest,digest) VALUES($1,$2,$3,$4,$5) ON CONFLICT(tenant,id) DO UPDATE SET version=EXCLUDED.version,manifest=EXCLUDED.manifest,digest=EXCLUDED.digest,active=true,revision=app_packages.revision+1").bind(t).bind(&m.id).bind(&m.version).bind(&value).bind(&digest).execute(&mut **tx).await?;
+    storage::attach(tx, t, &m).await?;
+    records::install(tx, t, &m).await?;
     if versions {
         sqlx::query("INSERT INTO app_versions(tenant,app,version,digest,manifest) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING").bind(t).bind(&m.id).bind(&m.version).bind(&digest).bind(&value).execute(&mut **tx).await?;
     }
-    sqlx::query("INSERT INTO app_packages(tenant,id,version,manifest,digest) VALUES($1,$2,$3,$4,$5) ON CONFLICT(tenant,id) DO UPDATE SET version=EXCLUDED.version,manifest=EXCLUDED.manifest,digest=EXCLUDED.digest,active=true,revision=app_packages.revision+1").bind(t).bind(&m.id).bind(&m.version).bind(value).bind(&digest).execute(&mut **tx).await?;
+
     sqlx::query("INSERT INTO outbox(tenant,kind,data) VALUES($1,'app.installed',$2)")
         .bind(t)
         .bind(json!({"app":m.id,"version":m.version,"digest":digest}))
         .execute(&mut **tx)
         .await?;
-    storage::attach(tx, t, &m).await?;
     if let Some(c) = &m.configuration {
-        let sql = format!(
-            "SELECT EXISTS(SELECT 1 FROM public.{} WHERE tenant=$1 AND id=$2)",
-            table(t, &m.id, &c.entity)
-        );
-        sqlx::query("SELECT set_config('rac.tenant',$1,true)")
-            .bind(t)
-            .execute(&mut **tx)
-            .await?;
-        let exists: bool = sqlx::query_scalar(sqlx::AssertSqlSafe(sql.as_str()))
-            .bind(t)
-            .bind(&c.record)
-            .fetch_one(&mut **tx)
-            .await?;
+        let exists = records::get(tx, t, &m.id, &c.entity, &c.record, false)
+            .await?
+            .is_some();
         if !exists {
             let entity = m.entities.iter().find(|e| e.name == c.entity).unwrap();
             data::save_tx(

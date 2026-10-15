@@ -1,4 +1,4 @@
-//! Explicit, transactional field evolution. No raw migration SQL; bounded recovery snapshots precede DDL and every converted value is validated.
+//! Explicit, transactional field evolution. No raw migration SQL; bounded recovery snapshots precede data changes and every converted value is validated.
 use super::*;
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

@@ -38,16 +38,13 @@ pub(super) fn predicate(query: &mut sqlx::QueryBuilder<sqlx::Postgres>, e: &Enti
     if let Some(p) = &e.publication {
         query
             .push(format!(
-                " AND {}='published' AND ({}='*' OR {}=",
-                column(&p.status_field),
-                column(&p.channel_field),
-                column(&p.channel_field)
+                " AND fields->>'{}'='published' AND (fields->>'{}'='*' OR fields->>'{}'=",
+                p.status_field, p.channel_field, p.channel_field
             ))
             .push_bind(channel)
             .push(format!(
-                ") AND ({} IS NULL OR {}::timestamptz<=now())",
-                column(&p.starts_at),
-                column(&p.starts_at)
+                ") AND (fields->>'{}' IS NULL OR (fields->>'{}')::timestamptz<=now())",
+                p.starts_at, p.starts_at
             ));
     }
 }
