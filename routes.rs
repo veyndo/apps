@@ -12,6 +12,7 @@ pub(crate) fn app_router() -> Router<App> {
         .merge(credentials::router())
         .merge(consent::router())
         .merge(secrets::router())
+        .merge(settings::router())
         .merge(core_callbacks::router())
         .merge(core_documents::router())
         .merge(asset_surfaces::router())

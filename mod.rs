@@ -22,6 +22,7 @@ mod event_projection;
 mod events;
 mod schedules;
 mod secrets;
+mod settings;
 mod webhook_scope;
 mod webhooks;
 pub(crate) use schedules::schedule_once;

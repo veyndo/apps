@@ -1,6 +1,7 @@
 //! Package capability, schema and action validation; no executable behavior is inferred from names.
 use super::*;
 pub(crate) fn validate(m: &Manifest) -> Result<()> {
+    settings::validate(m)?;
     presentation::validate(m.presentation.as_ref())?;
     ontology::validate(m)?;
     schema_changes::validate(m)?;
@@ -69,6 +70,15 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             && p != "customers.pii"
     }) {
         return Err(bad("Unknown app permission"));
+    }
+    if m.entities
+        .iter()
+        .flat_map(|e| &e.fields)
+        .filter(|f| f.indexed || f.unique)
+        .count()
+        > 64
+    {
+        return Err(bad("Maximum 64 declared indexes per app package"));
     }
     let mut names = std::collections::HashSet::new();
     for e in &m.entities {

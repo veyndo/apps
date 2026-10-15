@@ -17,6 +17,8 @@ pub(crate) struct Manifest {
     pub permissions: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub configuration: Option<ConfigurationContract>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub settings: Vec<super::settings::Setting>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub commerce_hooks: Option<super::commerce_hooks::Contract>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

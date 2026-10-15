@@ -70,6 +70,13 @@ async fn install_inner(
         .bind(format!("{t}:{}", m.id))
         .execute(&mut **tx)
         .await?;
+    // The existing tenant installation lock serializes DDL admission across replicas.
+    let admitted: bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM app_packages WHERE tenant=$1 AND id=$2) OR (SELECT count(*) FROM app_packages WHERE tenant=$1)<128").bind(t).bind(&m.id).fetch_one(&mut **tx).await?;
+    if !admitted {
+        return Err(bad(
+            "Maximum 128 registered app packages per shop; update an existing app",
+        ));
+    }
     distribution::dependencies(tx, t, &m).await?;
     commerce_hooks::admission(tx, t, &m).await?;
     let value = json!(m);

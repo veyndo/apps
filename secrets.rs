@@ -74,8 +74,39 @@ async fn rotate(
         .ok_or(bad(
             "Secret must be 32..4096 characters without control characters",
         ))?;
+    let revision = store(
+        &a,
+        &t,
+        &id,
+        SecretWrite {
+            kind: &kind,
+            digest: &digest,
+            revision,
+            actor,
+            secret,
+        },
+    )
+    .await?;
+    Ok(Json(json!({"rotated":true,"revision":revision})))
+}
+/// Shared encrypted persistence for transport credentials and declared app settings.
+pub(super) struct SecretWrite<'a> {
+    pub kind: &'a str,
+    pub digest: &'a str,
+    pub revision: i64,
+    pub actor: &'a str,
+    pub secret: &'a str,
+}
+pub(super) async fn store(a: &App, t: &str, id: &str, write: SecretWrite<'_>) -> Result<i64> {
+    let SecretWrite {
+        kind,
+        digest,
+        revision,
+        actor,
+        secret,
+    } = write;
     let encrypted =
-        veyndo::inference::settings::seal(&binding(&t, &id, &kind, &digest, revision + 1), secret)
+        veyndo::inference::settings::seal(&binding(t, id, kind, digest, revision + 1), secret)
             .map_err(|_| {
                 Error(
                     StatusCode::SERVICE_UNAVAILABLE,
@@ -87,7 +118,7 @@ async fn rotate(
         .bind(format!("{t}:{id}:{kind}"))
         .execute(&mut *tx)
         .await?;
-    let current: Option<i64> = sqlx::query_scalar("SELECT revision FROM app_service_secrets WHERE tenant=$1 AND app=$2 AND kind=$3 FOR UPDATE").bind(&t).bind(&id).bind(&kind).fetch_optional(&mut *tx).await?;
+    let current: Option<i64> = sqlx::query_scalar("SELECT revision FROM app_service_secrets WHERE tenant=$1 AND app=$2 AND kind=$3 FOR UPDATE").bind(t).bind(id).bind(kind).fetch_optional(&mut *tx).await?;
     if current.unwrap_or(0) != revision {
         return Err(conflict(
             "Secret was rotated elsewhere; reload its revision",
@@ -96,21 +127,21 @@ async fn rotate(
     let active_digest: String = sqlx::query_scalar(
         "SELECT digest FROM app_packages WHERE tenant=$1 AND id=$2 AND active FOR SHARE",
     )
-    .bind(&t)
-    .bind(&id)
+    .bind(t)
+    .bind(id)
     .fetch_one(&mut *tx)
     .await?;
     if digest != active_digest {
         return Err(conflict("App package changed before secret rotation"));
     }
-    sqlx::query("INSERT INTO app_service_secrets(tenant,app,kind,ciphertext,package_digest,revision,actor) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(tenant,app,kind) DO UPDATE SET ciphertext=EXCLUDED.ciphertext,package_digest=EXCLUDED.package_digest,revision=EXCLUDED.revision,actor=EXCLUDED.actor,rotated_at=now()").bind(&t).bind(&id).bind(&kind).bind(encrypted).bind(&digest).bind(revision+1).bind(actor).execute(&mut *tx).await?;
+    sqlx::query("INSERT INTO app_service_secrets(tenant,app,kind,ciphertext,package_digest,revision,actor) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(tenant,app,kind) DO UPDATE SET ciphertext=EXCLUDED.ciphertext,package_digest=EXCLUDED.package_digest,revision=EXCLUDED.revision,actor=EXCLUDED.actor,rotated_at=now()").bind(t).bind(id).bind(kind).bind(encrypted).bind(digest).bind(revision+1).bind(actor).execute(&mut *tx).await?;
     sqlx::query("INSERT INTO outbox(tenant,kind,data) VALUES($1,'app.secret_rotated',$2)")
         .bind(t)
         .bind(json!({"app":id,"kind":kind,"revision":revision+1,"actor":actor}))
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
-    Ok(Json(json!({"rotated":true,"revision":revision+1})))
+    Ok(revision + 1)
 }
 /// Existing operator fallbacks remain only when no tenant-specific value has ever been configured.
 pub(super) async fn resolve(a: &App, t: &str, m: &Manifest, kind: &str) -> Result<Option<String>> {

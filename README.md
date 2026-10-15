@@ -38,3 +38,6 @@ The [source inventory](../../docs/module-inventory.md) is checked in CI. [The be
 - `presentation.rs`: declared artwork and local category fallbacks.
 
 [Guided app contracts](../../docs/app-assistants.md).
+
+- `settings.rs`: bounded, localized package setting declarations and live personal-administrator configuration. Values reuse `secrets.rs` authenticated encryption, digest/CAS fence and metadata outbox. Secret values have no browser GET path; private approved service actions receive `_appSettings` server-side. No public settings exposure, sandbox credential copy or credential rollback.
+- Installation admission now limits new package IDs to 128 per tenant and declared indexes to 64 per package. Existing-package updates remain possible at the package-count limit; tenant/app rows and byte quotas continue unchanged. These caps are not a production-scale benchmark.

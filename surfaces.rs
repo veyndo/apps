@@ -63,6 +63,8 @@ pub(crate) fn validate_contract(m: &Manifest) -> Result<()> {
                 "storefront.header",
                 "product.detail",
                 "cart.summary",
+                "checkout.content",
+                "checkout.summary",
                 "account.overview",
             ]
             .contains(&s.location.as_str())

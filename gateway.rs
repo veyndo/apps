@@ -187,13 +187,42 @@ pub(super) async fn service_call_pinned(
     let service_token = secrets::resolve(a, t, &manifest, "service")
         .await?
         .unwrap_or_else(|| config["token"].as_str().unwrap_or("").to_owned());
+    let mut body = v.clone();
+    if !manifest.settings.is_empty() {
+        let private_action = path
+            .strip_prefix("actions/")
+            .and_then(|name| manifest.actions.iter().find(|action| action.name == name))
+            .is_some_and(|action| !action.public);
+        if private_action {
+            let values = settings::resolve(a, t, &manifest).await?;
+            if manifest.settings.iter().any(|f| {
+                f.required
+                    && values
+                        .get(&f.key)
+                        .is_none_or(|v| v.is_null() || v.as_str().is_some_and(str::is_empty))
+            }) {
+                return Err(bad(
+                    "Complete this app's settings in Apps before running this action",
+                ));
+            }
+            body.as_object_mut()
+                .ok_or(bad("Configured service actions require object input"))?
+                .insert("_appSettings".into(), values);
+        }
+    }
+    // Installed configuration shares the transport budget with caller input.
+    if body.to_string().len() > 65536 {
+        return Err(bad(
+            "App request including installed settings exceeds 64 KiB",
+        ));
+    }
     let response = egress::client(&parsed)
         .await?
         .post(format!("{}/{path}", url.trim_end_matches('/')))
         .timeout(std::time::Duration::from_secs(5))
         .bearer_auth(service_token)
         .header("x-tenant", t)
-        .json(v)
+        .json(&body)
         .send()
         .await
         .map_err(|_| Error(StatusCode::BAD_GATEWAY, "App service unavailable".into()))?;
