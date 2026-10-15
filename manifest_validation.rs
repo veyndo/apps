@@ -7,6 +7,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
     schema_changes::validate(m)?;
     distribution::validate(m)?;
     commerce_hooks::validate(m)?;
+    business_capability::validate(m)?;
     crate::payments::validate_contract(m)?;
     if m.category
         .as_deref()

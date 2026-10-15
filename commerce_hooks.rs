@@ -18,6 +18,19 @@ pub(crate) struct Record {
     pub entity: String,
     pub id: String,
 }
+pub(crate) async fn verify_package(m: &Manifest) -> Result<()> {
+    let Some(c) = &m.commerce_hooks else {
+        return Ok(());
+    };
+    let guest = runtime::prepare_source(c.source.clone()).await?;
+    let manifest = m.clone();
+    tokio::task::spawn_blocking(move || {
+        guest.validate_component_abi().map_err(bad)?;
+        business_capability::verify(&manifest, &guest)
+    })
+    .await
+    .map_err(|_| bad("Component verification worker failed"))?
+}
 pub(crate) struct Prepared {
     pub modules: HashMap<String, Arc<Sandbox>>,
 }

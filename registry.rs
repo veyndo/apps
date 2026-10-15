@@ -46,13 +46,7 @@ async fn install_inner(
 ) -> Result<Value> {
     validate(&m)?;
     approval::installation(&m)?;
-    if let Some(c) = &m.commerce_hooks {
-        let guest = runtime::prepare_source(c.source.clone()).await?;
-        tokio::task::spawn_blocking(move || guest.validate_component_abi())
-            .await
-            .map_err(|_| bad("Component validation failed"))?
-            .map_err(bad)?;
-    }
+    commerce_hooks::verify_package(&m).await?;
     crate::payments::install_methods(tx, t, &m).await?;
     if let Some(c) = &m.configuration {
         let entity = m.entities.iter().find(|e| e.name == c.entity).unwrap();

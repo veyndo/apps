@@ -44,3 +44,7 @@ The [source inventory](../../docs/module-inventory.md) is checked in CI. [The be
 
 - `input_schema.rs`, `input_schema_tests.rs`: bounded input/output schemas, nullable unions and escaped field pointers. This is an explicit subset, not a general JSON Schema engine.
 - `tool_contract.rs`: current authorized app discovery through the shared native tool description and optional result validation. Result-contract failures do not undo an already performed effect and are not automatically retried.
+
+- `business_capability/`: canonical localized merchant intent and bounded synthetic
+  decision cases. Existing WIT isolation executes them before build/installation;
+  no new executor, live-data reader, approval ledger or pricing implementation.
