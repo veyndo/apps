@@ -10,7 +10,11 @@ pub(crate) async fn collect_sources(a: &App) -> Result<()> {
     let mut tasks = tokio::task::JoinSet::new();
     for row in rows {
         let app = a.clone();
-        tasks.spawn(async move { collect_one(&app, row).await });
+        let tenant: String = row.get("tenant");
+        tasks.spawn(veyndo::tenant_scope::scoped(
+            veyndo::tenant_scope::Scope::Tenant(tenant),
+            async move { collect_one(&app, row).await },
+        ));
         if tasks.len() >= 8 {
             let _ = tasks.join_next().await;
         }

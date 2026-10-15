@@ -137,6 +137,23 @@ pub(super) async fn service_call_pinned(
     if crate::staging::parent(a, t).await?.is_some() {
         return Err(bad("External services are disabled in private sandboxes"));
     }
+    // Background collectors/flows have no HTTP admission middleware. Recheck the
+    // current live-shop status at the shared egress boundary as well.
+    let status: Option<String> = sqlx::query_scalar("SELECT status FROM tenants WHERE id=$1")
+        .bind(t)
+        .fetch_optional(&a.db)
+        .await?;
+    if !verified_kernel::shop_request_admissible(
+        status.as_deref() == Some("active"),
+        status.as_deref() == Some("paused"),
+        false,
+        false,
+    ) {
+        return Err(Error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Shop is unavailable for external app calls".into(),
+        ));
+    }
     // No URL or credential comes from the manifest, merchant, model or event payload.
     let _admission = service_limits::admit(a, t, id).await?;
     if v.to_string().len() > 65536 {
