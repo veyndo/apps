@@ -136,6 +136,7 @@ pub(crate) async fn save(
     v: &Value,
     h: &RequestContext,
 ) -> Result<Value> {
+    core_extensions::access(e, h, true)?;
     let mut tx = a.db.begin().await?;
     history::context(&mut tx, h, "app.save").await?;
     let result = save_tx(&mut tx, t, m, e, v).await?;
@@ -227,6 +228,7 @@ mod tests {
     #[test]
     fn fields_reject_type_and_unknown_properties() {
         let e = Entity {
+            extends: None,
             name: "config".into(),
             label: HashMap::new(),
             public_read: false,

@@ -100,6 +100,8 @@ pub(crate) struct ConfigurationContract {
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct Entity {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extends: Option<super::core_extensions::Extension>,
     pub name: String,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub label: HashMap<String, String>,

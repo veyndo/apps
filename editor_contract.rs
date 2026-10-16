@@ -102,6 +102,7 @@ pub(crate) fn entity_access(
     h: &RequestContext,
     handler: &str,
 ) -> Result<()> {
+    core_extensions::access(e, h, handler == "save")?;
     if handler == "save"
         && m.actions
             .iter()

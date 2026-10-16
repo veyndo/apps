@@ -76,6 +76,7 @@ pub(super) fn set(m: &Manifest, v: &NativeView, target: &str, e: &Expression) ->
         let mut optional = f.clone();
         optional.required = false;
         let entity = Entity {
+            extends: None,
             name: "literal".into(),
             label: HashMap::new(),
             public_read: false,

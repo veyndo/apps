@@ -60,12 +60,18 @@ pub(super) fn validate(m: &Manifest) -> Result<()> {
 }
 /// Called only after the existing native list has applied current action/entity rights and tenant RLS.
 pub(super) fn project(tenant: &str, m: &Manifest, e: &Entity, rows: &Value) -> Option<Value> {
+    let inferred = e.extends.as_ref().map(|_| Mapping {
+        entity: e.name.clone(),
+        node_type: e.name.clone(),
+        label: e.label.clone(),
+        fields: e.fields.iter().map(|f| f.name.clone()).collect(),
+        relations: HashMap::new(),
+    });
     let mapping = m
         .intelligence
-        .as_ref()?
-        .ontology
-        .iter()
-        .find(|n| n.entity == e.name)?;
+        .as_ref()
+        .and_then(|ai| ai.ontology.iter().find(|n| n.entity == e.name))
+        .or(inferred.as_ref())?;
     let rows = rows.as_array()?;
     let mut nodes = Vec::new();
     let mut edges = Vec::new();
@@ -79,11 +85,11 @@ pub(super) fn project(tenant: &str, m: &Manifest, e: &Entity, rows: &Value) -> O
             .filter_map(|f| row.get(f).map(|v| (f.clone(), v.clone())))
             .collect::<serde_json::Map<_, _>>();
         let node = json!({"id":source,"type":format!("app.{}.{}",m.id,mapping.node_type),"label":mapping.label,"properties":properties,"source":{"tenant":tenant,"app":m.id,"version":m.version,"entity":e.name,"recordId":id,"revision":row["revision"]}});
-        let relations = e.fields.iter().filter(|f| mapping.fields.contains(&f.name)).flat_map(|f| {
+        let relations = e.fields.iter().filter(|f| mapping.fields.contains(&f.name) || e.extends.as_ref().is_some_and(|x|x.field==f.name)).flat_map(|f| {
             let target = if let Some(core) = &f.core_reference {
                 Some(("native-reference", core.clone()))
             } else if let Some(entity) = &f.references {
-                let target = m.intelligence.as_ref().unwrap().ontology.iter().find(|n| n.entity == *entity).map(|n| &n.node_type).unwrap_or(entity);
+                let target = m.intelligence.as_ref().and_then(|ai|ai.ontology.iter().find(|n| n.entity == *entity)).map(|n| &n.node_type).unwrap_or(entity);
                 Some(("app-reference", format!("app.{}.{}",m.id,target)))
             } else { None };
             let Some((kind,target_type)) = target else { return Vec::new(); };

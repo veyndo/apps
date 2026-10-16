@@ -179,6 +179,7 @@ pub(super) fn shape(old: &Manifest, m: &Manifest, path: Option<&Migration>) -> R
             .iter()
             .find(|v| v.name == e.name)
             .ok_or(conflict("Removing models requires an offline migration"))?;
+        core_extensions::compatible(e, next)?;
         for f in &e.fields {
             if !next
                 .fields

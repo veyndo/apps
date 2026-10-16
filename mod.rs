@@ -21,6 +21,9 @@ pub(crate) use configuration_selection::{
 };
 mod consent;
 mod core_callbacks;
+pub(crate) mod core_extensions;
+pub(crate) mod extension_filter;
+mod extension_projection;
 mod package_fence;
 pub(crate) use package_fence::lock_package_write;
 mod core_documents;

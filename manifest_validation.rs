@@ -1,6 +1,7 @@
 //! Package capability, schema and action validation; no executable behavior is inferred from names.
 use super::*;
 pub(crate) fn validate(m: &Manifest) -> Result<()> {
+    core_extensions::validate(m)?;
     settings::validate(m)?;
     configuration_inputs::validate(m)?;
     presentation::validate(m.presentation.as_ref())?;

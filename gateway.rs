@@ -58,6 +58,9 @@ async fn execute(a: &App, h: &RequestContext, id: &str, name: &str, v: &Value) -
         .entity
         .as_ref()
         .and_then(|n| m.entities.iter().find(|e| e.name == *n));
+    if let Some(e) = e {
+        core_extensions::access(e, h, action.handler == "save")?;
+    }
     let result = match action.handler.as_str() {
         "assets" | "asset_preview" => {
             auth::permit(h, "catalog.read")?;

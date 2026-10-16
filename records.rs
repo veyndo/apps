@@ -81,6 +81,7 @@ pub(super) async fn install(tx: &mut sqlx::PgConnection, t: &str, m: &Manifest) 
         if let Some(old) = &old {
             let previous: Entity =
                 serde_json::from_value(old.clone()).map_err(|_| bad("Invalid prior app model"))?;
+            core_extensions::compatible(&previous, e)?;
             if e.fields
                 .iter()
                 .any(|f| f.required && !previous.fields.iter().any(|p| p.name == f.name))
