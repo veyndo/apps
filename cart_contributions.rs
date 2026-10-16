@@ -15,6 +15,8 @@ pub(crate) struct Configuration {
     pub app_version: String,
     pub entity: String,
     pub record: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presentation: Option<configuration_summary::Snapshot>,
 }
 pub(crate) async fn configure(a: &App, h: &RequestContext, id: &str, v: &Value) -> Result<Value> {
     let initial = load_cart(a, h).await?;

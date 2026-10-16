@@ -14,6 +14,7 @@ mod configuration_examples;
 pub(crate) use configuration_events::{configuration_budget, configuration_events};
 mod configuration_inputs;
 mod configuration_selection;
+mod configuration_summary;
 pub(crate) use configuration_selection::{
     Selection as ConfigurationSelection, resolve_selection as configuration_selection_for_list,
     resolve_selections, selection_shape,

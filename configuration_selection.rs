@@ -51,22 +51,27 @@ pub(crate) async fn resolve_selection(
         &selection.fields,
     )
     .await?;
+    let rule_fields = contract
+        .inputs
+        .as_ref()
+        .filter(|inputs| inputs.record_field.is_some())
+        .and_then(|_| {
+            m.entities
+                .iter()
+                .find(|entity| entity.name == contract.entity && entity.public_read)
+        })
+        .map(|entity| records::project(entity, &rule));
+    let main_locale = commerce::config(a, t).await?.0.main_locale.clone();
+    let presentation =
+        configuration_summary::snapshot(&m, &selection.fields, rule_fields.as_ref(), main_locale);
     Ok(Configuration {
         app: selection.app.clone(),
         product_id: selection.product_id.clone(),
         fields: selection.fields.clone(),
         fee_minor: fee,
         currency: contract.currency.clone(),
-        rule_fields: contract
-            .inputs
-            .as_ref()
-            .filter(|inputs| inputs.record_field.is_some())
-            .and_then(|_| {
-                m.entities
-                    .iter()
-                    .find(|entity| entity.name == contract.entity && entity.public_read)
-            })
-            .map(|entity| records::project(entity, &rule)),
+        rule_fields,
+        presentation,
         rule_revision: rule["revision"]
             .as_i64()
             .ok_or(bad("App revision missing"))?,
