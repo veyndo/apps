@@ -5,7 +5,8 @@ fn permission(m: &Manifest, value: &str) -> bool {
 }
 pub(super) fn eligible(m: &Manifest, kind: &str, data: &Value) -> bool {
     subscribed(m, kind)
-        && (kind != "app.record.changed" || data["app"] == m.id)
+        && (!["app.record.changed", "app.configuration.changed"].contains(&kind)
+            || data["app"] == m.id)
         && event_contract::filtered(m, kind, data)
 }
 pub(super) fn subscribed(m: &Manifest, kind: &str) -> bool {
@@ -103,6 +104,15 @@ pub(super) fn payload(m: &Manifest, kind: &str, data: Value) -> Value {
                 "causalUpliftProven",
                 "asOf",
                 "autonomous",
+            ]
+        } else if kind == "app.configuration.changed" {
+            &[
+                "app",
+                "cartId",
+                "revision",
+                "salesChannelId",
+                "operation",
+                "products",
             ]
         } else if kind == "app.record.changed" {
             &["app", "entity", "id", "revision"]

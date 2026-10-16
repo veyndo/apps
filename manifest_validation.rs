@@ -2,6 +2,7 @@
 use super::*;
 pub(crate) fn validate(m: &Manifest) -> Result<()> {
     settings::validate(m)?;
+    configuration_inputs::validate(m)?;
     presentation::validate(m.presentation.as_ref())?;
     ontology::validate(m)?;
     schema_changes::validate(m)?;
@@ -154,6 +155,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
                 "save",
                 "service",
                 "configurations",
+                "configure",
                 "emit",
                 "submit",
                 "payment_onboarding",
@@ -206,6 +208,8 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             || a.input_schema["additionalProperties"] != false
             || (a.handler == "save" && a.public)
             || (a.handler == "configurations" && a.public)
+            || (a.handler == "configure"
+                && (m.configuration.is_none() || !a.public || a.read_only || a.flow_allowed))
             || a.entity
                 .as_ref()
                 .is_some_and(|n| !m.entities.iter().any(|e| e.name == *n))

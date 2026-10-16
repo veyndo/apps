@@ -7,6 +7,17 @@ mod cart_contributions;
 mod commerce_hooks;
 pub(crate) use commerce_hooks::{apply as apply_hooks, prepare as prepare_hooks};
 mod compatibility;
+mod configuration_events;
+mod configuration_orders;
+pub(crate) use configuration_orders::configurations;
+mod configuration_examples;
+pub(crate) use configuration_events::{configuration_budget, configuration_events};
+mod configuration_inputs;
+mod configuration_selection;
+pub(crate) use configuration_selection::{
+    Selection as ConfigurationSelection, resolve_selection as configuration_selection_for_list,
+    resolve_selections, selection_shape,
+};
 mod consent;
 mod core_callbacks;
 mod package_fence;

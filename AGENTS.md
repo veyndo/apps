@@ -73,3 +73,17 @@ payment attempts; it is app-owned and must never be called sandboxed. New extern
 providers use the generic remote contract. Removing that compatibility path requires
 an explicit existing-attempt/provider migration, not a cosmetic file move.
 
+
+## Structured configuration ownership
+
+Read `docs/furniture-configurator.md` before extending configuration. App packages
+own library schema, dimension rules and frozen cases. Generic configuration modules
+reuse field validation, no-import bounded guests, native currencies, cart/channel
+admission and exact B2B approval. Saved lists store inputs only; completed orders
+retain accepted package/material snapshots. Never trust a caller-authored fee or
+restore an old list price. HTTP/UI and declared MCP configure actions share the
+same owner; MCP opt-out does not disable HTTP. Configure is not a Flow action.
+Minimized `app.configuration.changed` events use the existing atomic outbox and
+Flow consumer without cart tokens or free input text. Purchase projections require
+current orders.read independently of Manifest metadata and filter by app before
+pagination. No furniture rule, second pricing store or app-specific SQL table in Core.
