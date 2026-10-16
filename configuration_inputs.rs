@@ -17,7 +17,13 @@ pub(crate) struct Example {
     pub label: HashMap<String, String>,
     pub fields: Value,
     pub material_fee_minor: i64,
+    #[serde(deserialize_with = "expected_fee")]
     pub expected_fee_minor: Option<i64>,
+}
+fn expected_fee<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Option<i64>, D::Error> {
+    Option::<i64>::deserialize(deserializer)
 }
 impl Inputs {
     fn entity(&self) -> Result<Entity> {
@@ -37,6 +43,13 @@ impl Inputs {
             {
                 return Err(bad("Printable configuration fields required"));
             }
+        }
+        if self.arguments.iter().any(|name| {
+            fields[name]
+                .as_i64()
+                .is_some_and(|value| value.unsigned_abs() > 9_007_199_254_740_991)
+        }) {
+            return Err(bad("Configuration integers exceed exact JSON wire range"));
         }
         self.arguments
             .iter()
@@ -84,7 +97,7 @@ pub(super) fn validate(m: &Manifest) -> Result<()> {
             || f.references
                 .as_ref()
                 .is_some_and(|r| Some(&f.name) != inputs.record_field.as_ref() || r != &c.entity)
-            || f.label.is_empty()
+            || !business_capability::localized(&f.label)
         {
             return Err(bad("Invalid structured configuration field"));
         }
@@ -232,6 +245,12 @@ mod tests {
     }
     #[test]
     fn structured_contract_cannot_select_private_data_or_undeclared_arguments() {
+        let mut omitted = json!(package());
+        omitted["configuration"]["inputs"]["examples"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("expectedFeeMinor");
+        assert!(serde_json::from_value::<Manifest>(omitted).is_err());
         let mut m = package();
         m.entities[0].public_read = false;
         assert!(validate(&m).is_err());
