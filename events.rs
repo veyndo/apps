@@ -1,5 +1,6 @@
 //! Durable at-least-once app events, retry leases and stable event idempotency keys.
 use super::*;
+use tracing::Instrument;
 pub(crate) async fn deliver_once(a: &App) -> Result<bool> {
     let configured = &crate::runtime_config::get().services;
     let ids = configured
@@ -26,7 +27,7 @@ pub(crate) async fn deliver_once(a: &App) -> Result<bool> {
     if extra > 0 {
         sqlx::query("WITH candidates AS (SELECT tenant,app,event_id FROM app_deliveries WHERE tenant=$1 AND app=$2 AND available_at<=now() AND (state='queued' OR state='running' AND lease_until<now()) ORDER BY event_id LIMIT $4 FOR UPDATE SKIP LOCKED) UPDATE app_deliveries d SET state='running',attempts=attempts+1,lease_token=$3,last_attempt_at=now(),lease_until=now()+interval '30 seconds' FROM candidates c WHERE d.tenant=c.tenant AND d.app=c.app AND d.event_id=c.event_id").bind(&t).bind(&app).bind(lease).bind(extra).execute(&mut *tx).await?;
     }
-    let rows=sqlx::query("SELECT o.id,o.kind,o.data,d.attempts FROM app_deliveries d JOIN outbox o ON o.tenant=d.tenant AND o.id=d.event_id WHERE d.tenant=$1 AND d.app=$2 AND d.lease_token=$3 ORDER BY o.id").bind(&t).bind(&app).bind(lease).fetch_all(&mut *tx).await?;
+    let rows=sqlx::query("SELECT o.id,o.kind,o.data,o.trace_id,d.attempts FROM app_deliveries d JOIN outbox o ON o.tenant=d.tenant AND o.id=d.event_id WHERE d.tenant=$1 AND d.app=$2 AND d.lease_token=$3 ORDER BY o.id").bind(&t).bind(&app).bind(lease).fetch_all(&mut *tx).await?;
     tx.commit().await?;
     let mut items = vec![];
     for event in &rows {
@@ -46,7 +47,7 @@ pub(crate) async fn deliver_once(a: &App) -> Result<bool> {
     let outcome = if items.is_empty() {
         Ok(json!({"skipped":true}))
     } else {
-        event_contract::send(a, &t, &m, &payload).await
+        event_contract::send(a, &t, &m, &payload).instrument(tracing::info_span!("app_event_delivery",trace_id=%rows[0].get::<String,_>("trace_id"),event_id=rows[0].get::<i64,_>("id"),app=%app)).await
     };
     let state = if outcome.is_ok() {
         "delivered"
