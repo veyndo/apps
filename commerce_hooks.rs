@@ -19,6 +19,22 @@ pub(crate) struct Record {
     pub id: String,
 }
 pub(crate) async fn verify_package(m: &Manifest) -> Result<()> {
+    if let Some(c) = &m.configuration {
+        let entity = m
+            .entities
+            .iter()
+            .find(|e| e.name == c.entity)
+            .ok_or(bad("Configuration model missing"))?;
+        data::fields(entity, &c.default_fields)?;
+        runtime::validate_fee(
+            c,
+            c.default_fields[&c.price_field]
+                .as_i64()
+                .ok_or(bad("Default price required"))?,
+        )
+        .await?;
+        configuration_examples::verify(c).await?;
+    }
     let Some(c) = &m.commerce_hooks else {
         return Ok(());
     };

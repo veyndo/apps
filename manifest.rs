@@ -84,6 +84,10 @@ pub(crate) struct IntelligenceContract {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ConfigurationContract {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inputs: Option<super::configuration_inputs::Inputs>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
     pub entity: String,
     pub record: String,
     pub price_field: String,

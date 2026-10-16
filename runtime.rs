@@ -12,29 +12,43 @@ pub(crate) async fn prepare_source(source: String) -> Result<Arc<Sandbox>> {
         .compile(&hash(&source), source)
         .await
 }
-pub(crate) async fn prepared_contribution(
+pub(crate) async fn validate_fee(c: &ConfigurationContract, fee: i64) -> Result<i64> {
+    run(
+        prepare(c).await?,
+        fee,
+        None,
+        c.inputs.as_ref().map_or(1, |inputs| inputs.arguments.len()),
+    )
+    .await
+}
+pub(crate) async fn configured_contribution(
     guest: Arc<Sandbox>,
     c: &ConfigurationContract,
     fee: i64,
-    length: i64,
+    fields: &Value,
 ) -> Result<i64> {
     if guest.digest() != hash(&c.wasm_source) {
         return Err(conflict("App module changed; retry checkout"));
     }
-    run(guest, fee, Some(length)).await
+    let args = configuration_inputs::arguments(c, fields)?;
+    run(
+        guest,
+        fee,
+        Some(args),
+        c.inputs.as_ref().map_or(1, |inputs| inputs.arguments.len()),
+    )
+    .await
 }
-pub(crate) async fn validate_fee(c: &ConfigurationContract, fee: i64) -> Result<i64> {
-    execute(c, fee, None).await
-}
-async fn execute(c: &ConfigurationContract, fee: i64, length: Option<i64>) -> Result<i64> {
-    let guest = prepare(c).await?;
-    run(guest, fee, length).await
-}
-async fn run(guest: Arc<Sandbox>, fee: i64, length: Option<i64>) -> Result<i64> {
+async fn run(
+    guest: Arc<Sandbox>,
+    fee: i64,
+    arguments: Option<Vec<i64>>,
+    arity: usize,
+) -> Result<i64> {
     tokio::task::spawn_blocking(move || {
-        let result = if let Some(length) = length {
-            guest.contribution(fee, length).map_err(bad)?
-        } else if guest.validate_contribution(fee).map_err(bad)? {
+        let result = if let Some(arguments) = arguments {
+            guest.contribution_args(fee, &arguments).map_err(bad)?
+        } else if guest.validate_contribution_args(fee, arity).map_err(bad)? {
             fee
         } else {
             return Err(bad("App rejected price data"));

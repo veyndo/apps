@@ -31,7 +31,7 @@ pub(crate) struct Expected {
     pub accepted: bool,
     pub reason_code: String,
 }
-fn localized(value: &HashMap<String, String>) -> bool {
+pub(super) fn localized(value: &HashMap<String, String>) -> bool {
     !value.is_empty()
         && value.len() <= 100
         && value.iter().all(|(key, text)| {

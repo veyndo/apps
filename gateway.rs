@@ -79,9 +79,10 @@ async fn execute(a: &App, h: &RequestContext, id: &str, name: &str, v: &Value) -
         }
         "submit" => submissions::submit(a, h, &m, e.ok_or(bad("Entity required"))?, v).await,
         "save" => data::save(a, &t, &m, e.ok_or(bad("Entity required"))?, v, h).await,
+        "configure" => configure(a, h, id, v).await,
         "configurations" => {
             merchant(a, h)?;
-            configurations(a, &t, id).await
+            configurations(a, &t, id, v).await
         }
         "payment_command" => crate::payments::app_command(a, h, id, v).await,
         "payment_onboarding" => crate::payments::onboarding(a, h, id, v).await,
@@ -302,6 +303,9 @@ pub(super) fn action_authorized(a: &App, h: &RequestContext, action: &Action) ->
 
 /// Additional current team rights apply equally to UI, HTTP, MCP, Flow and leased workers.
 pub(super) fn additional_permissions(h: &RequestContext, action: &Action) -> Result<()> {
+    if action.handler == "configurations" {
+        auth::permit(h, "orders.read")?;
+    }
     for scope in &action.required_permissions {
         auth::permit(h, scope)?;
     }

@@ -7,80 +7,65 @@ pub(crate) struct Configuration {
     pub product_id: String,
     pub fields: Value,
     pub fee_minor: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rule_fields: Option<Value>,
     pub rule_revision: i64,
     pub app_version: String,
     pub entity: String,
     pub record: String,
 }
 pub(crate) async fn configure(a: &App, h: &RequestContext, id: &str, v: &Value) -> Result<Value> {
-    let t = tenant(h)?;
-    let m = package(a, &t, id, true).await?;
-    let contract = m.configuration.as_ref().ok_or(bad(
-        "App has no configuration capability; upgrade its package",
-    ))?;
-    let input = v["fields"][&contract.input_field]
-        .as_str()
-        .filter(|s| s.len() <= 2000 && !s.chars().any(char::is_control))
-        .ok_or(bad("Printable configuration field required"))?;
-    if v["fields"].as_object().is_none_or(|o| o.len() != 1) {
-        return Err(bad("Only declared configuration input is accepted"));
-    }
+    let initial = load_cart(a, h).await?;
     let product = v["productId"].as_str().ok_or(bad("productId required"))?;
-    let guest = runtime::prepare(contract).await?;
+    marketing::admit_product(a, h, product).await?;
+    if initial.status != "open" || v["revision"].as_i64() != Some(initial.revision) {
+        return Err(conflict("Cart changed or terminal"));
+    }
+    let selection = configuration_selection::Selection {
+        app: id.into(),
+        product_id: product.into(),
+        fields: v["fields"].clone(),
+    };
+    let config = configuration_selection::resolve_selection(a, &initial.tenant, &selection).await?;
+    let mut candidate = initial.clone();
+    candidate.data.app_configurations.remove(product);
+    candidate
+        .data
+        .app_configurations
+        .insert(format!("{product}:{id}"), config);
+    configuration_budget(&candidate.data.app_configurations)?;
+    let (settings, _) =
+        commerce::scoped_config(a, &candidate.tenant, &candidate.data.sales_channel).await?;
+    let currency = settings.currencies.selected(&candidate.data.currency)?;
+    for configuration in candidate.data.app_configurations.values() {
+        crate::cart_price::configuration_price(configuration, &settings.currencies, currency)?;
+    }
+    let modules = prepare_configurations(a, &candidate).await?;
     let mut tx = a.db.begin().await?;
-    sqlx::query("SELECT set_config('rac.tenant',$1,true)")
-        .bind(&t)
-        .execute(&mut *tx)
-        .await?;
     let row = sqlx::query("SELECT * FROM carts WHERE tenant=$1 AND token=$2 FOR UPDATE")
-        .bind(&t)
-        .bind(token(h)?)
-        .fetch_optional(&mut *tx)
-        .await?
-        .ok_or(bad("Cart not found"))?;
+        .bind(&initial.tenant)
+        .bind(&initial.token)
+        .fetch_one(&mut *tx)
+        .await?;
     let mut cart = stored(&row)?;
     pos::guard_cart(h, &cart)?;
     b2b::guard_conn(&mut tx, h, &cart).await?;
-    if cart.status != "open" || v["revision"].as_i64() != Some(cart.revision) {
+    if cart.status != "open" || cart.revision != initial.revision {
         return Err(conflict("Cart changed or terminal"));
     }
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM products WHERE tenant=$1 AND id=$2)")
-            .bind(&t)
-            .bind(product)
-            .fetch_one(&mut *tx)
-            .await?;
-    if !exists {
-        return Err(bad("Unknown product"));
+    let before = cart.data.app_configurations.clone();
+    cart.data.app_configurations = candidate.data.app_configurations;
+    // Validate even a configuration selected before its product is added to the cart.
+    let mut checked = cart.clone();
+    if !checked.data.items.iter().any(|item| item.id == product) {
+        checked.data.items.push(Item {
+            id: product.into(),
+            quantity: 1,
+        });
     }
-    let rule = records::get(&mut tx, &t, id, &contract.entity, &contract.record, false)
-        .await?
-        .ok_or(bad("App configuration data missing"))?;
-    let fee = runtime::prepared_contribution(
-        guest,
-        contract,
-        rule[&contract.price_field]
-            .as_i64()
-            .ok_or(bad("App price missing"))?,
-        input.chars().count() as i64,
-    )
-    .await?;
-    cart.data.app_configurations.remove(product); // Replace a v1.0 legacy contribution for this SKU.
-    cart.data.app_configurations.insert(
-        format!("{product}:{id}"),
-        Configuration {
-            app: id.into(),
-            product_id: product.into(),
-            fields: v["fields"].clone(),
-            fee_minor: fee,
-            rule_revision: rule["revision"]
-                .as_i64()
-                .ok_or(bad("App revision missing"))?,
-            app_version: m.version,
-            entity: contract.entity.clone(),
-            record: contract.record.clone(),
-        },
-    );
+    validate_configurations(&mut tx, &checked, &modules).await?;
     cart.revision += 1;
     sqlx::query("UPDATE carts SET data=$1,revision=$2 WHERE id=$3")
         .bind(json!(cart.data))
@@ -88,6 +73,7 @@ pub(crate) async fn configure(a: &App, h: &RequestContext, id: &str, v: &Value) 
         .bind(&cart.id)
         .execute(&mut *tx)
         .await?;
+    configuration_events(&mut tx, &cart, &before).await?;
     tx.commit().await?;
     cart_json(a, &cart).await
 }
@@ -113,9 +99,10 @@ pub(crate) async fn validate_configurations(
             .configuration
             .as_ref()
             .ok_or(conflict("Upgrade and reconfigure this app"))?;
-        if m.version != config.app_version
+        if contract.currency != config.currency
+            || m.version != config.app_version
             || contract.entity != config.entity
-            || contract.record != config.record
+            || configuration_inputs::record(contract, &config.fields)? != config.record
         {
             return Err(conflict("App changed; configure again"));
         }
@@ -129,7 +116,7 @@ pub(crate) async fn validate_configurations(
         )
         .await?
         .ok_or(conflict("Configuration rules missing"))?;
-        let fee = runtime::prepared_contribution(
+        let fee = runtime::configured_contribution(
             prepared
                 .get(&hash(&contract.wasm_source))
                 .cloned()
@@ -138,11 +125,7 @@ pub(crate) async fn validate_configurations(
             r[&contract.price_field]
                 .as_i64()
                 .ok_or(bad("App price missing"))?,
-            config.fields[&contract.input_field]
-                .as_str()
-                .unwrap_or("")
-                .chars()
-                .count() as i64,
+            &config.fields,
         )
         .await?;
         if r["revision"].as_i64().ok_or(bad("App revision missing"))? != config.rule_revision
@@ -172,26 +155,4 @@ pub(crate) async fn prepare_configurations(
         }
     }
     Ok(prepared)
-}
-pub(crate) async fn configurations(a: &App, t: &str, id: &str) -> Result<Value> {
-    let rows=sqlx::query("SELECT id,data->'cart'->'lineItems' AS items FROM orders WHERE tenant=$1 AND data->'cart'->'lineItems' @? '$[*].configuration' ORDER BY created_at DESC LIMIT 100").bind(t).fetch_all(&a.db).await?;
-    let mut orders = vec![];
-    for r in rows {
-        let items: Value = r.get("items");
-        let items = items
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter(|i| {
-                i["configuration"]["app"] == id
-                    || i["appConfigurations"]
-                        .as_array()
-                        .is_some_and(|v| v.iter().any(|c| c["app"] == id))
-            })
-            .collect::<Vec<_>>();
-        if !items.is_empty() {
-            orders.push(json!({"orderId":r.get::<String,_>("id"),"items":items}));
-        }
-    }
-    Ok(json!({"elements":orders}))
 }
