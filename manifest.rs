@@ -16,6 +16,8 @@ pub(crate) struct Manifest {
     pub presentation: Option<super::presentation::Presentation>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub capability: Option<super::business_capability::Contract>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub lifecycles: Vec<super::native_lifecycle::Contract>,
     pub permissions: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub configuration: Option<ConfigurationContract>,

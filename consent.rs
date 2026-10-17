@@ -11,6 +11,24 @@ pub(super) fn decode(v: &Value) -> Result<Manifest> {
     Ok(m)
 }
 pub(crate) fn actor_permissions(h: &RequestContext, m: &Manifest) -> Result<()> {
+    if !m.lifecycles.is_empty() {
+        auth::permit(h, "settings.write")?;
+        for c in &m.lifecycles {
+            auth::permit(
+                h,
+                if c.object == "order" {
+                    "orders.write"
+                } else {
+                    "b2b.manage"
+                },
+            )?;
+            for edge in &c.transitions {
+                for permission in &edge.required_permissions {
+                    auth::permit(h, permission)?;
+                }
+            }
+        }
+    }
     for p in &m.permissions {
         if let Some(scope) = credentials::scope(p) {
             auth::permit(h, scope)?;

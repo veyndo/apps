@@ -2,6 +2,7 @@
 use super::*;
 pub(crate) fn validate(m: &Manifest) -> Result<()> {
     core_extensions::validate(m)?;
+    native_lifecycle::validate(m)?;
     settings::validate(m)?;
     configuration_inputs::validate(m)?;
     presentation::validate(m.presentation.as_ref())?;
@@ -58,6 +59,7 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             "jobs.read",
             "jobs.write",
             "commerce.hooks",
+            "commerce.lifecycle",
             "assets.read",
             "assets.write",
         ]

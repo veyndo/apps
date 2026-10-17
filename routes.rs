@@ -152,6 +152,7 @@ async fn app_state(
         approval::installation(&m)?;
         distribution::dependencies(&mut tx, &t, &m).await?;
         commerce_hooks::admission(&mut tx, &t, &m).await?;
+        native_lifecycle::admission(&mut tx, &t, &m).await?;
     }
     if !active {
         distribution::deactivate(&mut tx, &t, &id).await?;

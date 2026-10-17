@@ -60,6 +60,7 @@ pub(crate) use tool_contract::app_tools;
 mod input_schema;
 mod job_callbacks;
 mod jobs;
+pub(crate) mod native_lifecycle;
 pub(crate) mod record_history;
 mod record_lifecycle;
 pub(crate) use approval::print_digest;
