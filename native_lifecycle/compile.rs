@@ -1,5 +1,14 @@
 //! Compile bounded app-local state graphs into the native machine; conflicts and stranded paths fail closed.
 use super::*;
+const ORDER_GUARDS: &[&str] = &["payment.ready", "delivery.delivered"];
+const QUOTE_GUARDS: &[&str] = &["quote.message"];
+const QUOTE_FROM: &[&str] = &["requested"];
+const QUOTE_TO: &[&str] = &["requested", "rejected"];
+const REPLACEMENTS: &[&str] = &["start", "complete"];
+/// Read-only generation guidance shares the exact native graph/guard/scope owners.
+pub(crate) fn generation_context() -> Value {
+    json!({"version":1,"order":{"machine":commerce::default_machine(),"guards":ORDER_GUARDS,"replaceableActions":REPLACEMENTS},"quote":{"machine":quote_machine(),"allowedNativeFrom":QUOTE_FROM,"allowedNativeTo":QUOTE_TO,"guards":QUOTE_GUARDS,"replaceableActions":[]},"requiredPermissions":auth::SCOPES})
+}
 fn key(app: &str, id: &str) -> String {
     format!("a{}_{}", &hash(app)[..8], id)
 }
@@ -77,19 +86,27 @@ pub(crate) fn compile(
             for e in &c.transitions {
                 let from = resolve(&e.from)?;
                 let to = resolve(&e.to)?;
-                if !identifier(&e.id)
-                    || e.id.len() > 16
-                    || !labels(&e.label)
-                    || from == to
-                    || e.required_permissions.len() > 8
+                if !identifier(&e.id) || e.id.len() > 16 || !labels(&e.label) {
+                    return Err(bad(
+                        "Lifecycle actions require short unique IDs and translated labels",
+                    ));
+                }
+                if e.required_permissions.len() > 8
                     || e.required_permissions
                         .iter()
                         .any(|p| !auth::SCOPES.contains(&p.as_str()))
-                    || e.guards.len() > 4
+                {
+                    return Err(bad("Unknown native lifecycle permission"));
+                }
+                if e.guards.len() > 4
                     || e.guards.iter().any(|g| !match object {
-                        "order" => ["payment.ready", "delivery.delivered"].contains(&g.as_str()),
-                        _ => g == "quote.message",
+                        "order" => ORDER_GUARDS.contains(&g.as_str()),
+                        _ => QUOTE_GUARDS.contains(&g.as_str()),
                     })
+                {
+                    return Err(bad("Unsupported guard for this native lifecycle"));
+                }
+                if from == to
                     || base.states.iter().any(|s| s.id == from && s.terminal)
                     || object == "order"
                         && (["expired", "payment_review"].contains(&to.as_str())
@@ -100,15 +117,14 @@ pub(crate) fn compile(
                             }))
                     || object == "quote"
                         && (e.replaces.is_some()
-                            || !["requested"].contains(&e.from.as_str())
+                            || !QUOTE_FROM.contains(&e.from.as_str())
                                 && !names.contains(e.from.as_str())
-                            || !["requested", "rejected"].contains(&e.to.as_str())
-                                && !names.contains(e.to.as_str()))
+                            || !QUOTE_TO.contains(&e.to.as_str()) && !names.contains(e.to.as_str()))
                 {
-                    return Err(bad("Unsupported lifecycle edge, guard or permission"));
+                    return Err(bad("Unsupported native lifecycle transition"));
                 }
                 if let Some(replace) = &e.replaces {
-                    if !["start", "complete"].contains(&replace.as_str())
+                    if !REPLACEMENTS.contains(&replace.as_str())
                         || !replacements.insert(replace.clone())
                     {
                         return Err(conflict("Apps compete for a native lifecycle transition"));

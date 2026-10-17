@@ -2,7 +2,7 @@
 use super::*;
 mod compile;
 mod storage;
-pub(crate) use compile::{compile, quote_machine};
+pub(crate) use compile::{compile, generation_context, quote_machine};
 pub(crate) use storage::{
     admission, bind_order, capture, current_order, order_machine, project_labels, snapshot,
     state_labels, validate_active_locale, validate_order_base,
