@@ -54,8 +54,12 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
             "b2b.read",
             "b2b.manage",
             "customers.read",
+            "customers.write",
+            "settings.read",
             "products.read",
             "products.write",
+            "reviews.write",
+            "promotions.write",
             "jobs.read",
             "jobs.write",
             "commerce.hooks",
@@ -184,10 +188,10 @@ pub(crate) fn validate(m: &Manifest) -> Result<()> {
                     || a.read_only
                     || m.runtime != "service"
                     || !m.permissions.iter().any(|p| p == "jobs.write")
-                    || !m
-                        .events
-                        .iter()
-                        .any(|e| e == &format!("app.{}.job_{}", m.id, a.name))))
+                    || !m.events.iter().any(|e| {
+                        e == &format!("app.{}.job_{}", m.id, a.name)
+                            || e == &format!("app.{}.job_queued", m.id)
+                    })))
             || (a.handler == "emit" && a.public)
             || (a.handler == "emit" && a.read_only)
             || (a.handler == "payment_command"

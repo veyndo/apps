@@ -7,17 +7,27 @@ pub(super) async fn execute(
     op: &str,
     v: &Value,
 ) -> Result<Value> {
+    let mut metadata = v.clone();
+    metadata
+        .as_object_mut()
+        .ok_or(bad("App job callback must be an object"))?
+        .remove("result");
+    metadata.as_object_mut().unwrap().remove("evidence");
     input_schema::validate(
-        &json!({"type":"object","properties":{"id":{"type":"string","maxLength":100},"lease":{"type":"string","maxLength":100},"progress":{"type":"integer","minimum":0,"maximum":100},"status":{"type":"string","enum":["running","succeeded","failed","cancelled"]},"message":{"type":"object"},"result":{"type":"object"}},"required":["id"],"additionalProperties":false}),
-        v,
+        &json!({"type":"object","properties":{"id":{"type":"string","maxLength":100},"lease":{"type":"string","maxLength":100},"progress":{"type":"integer","minimum":0,"maximum":100},"status":{"type":"string","enum":["running","succeeded","failed","cancelled"]},"message":{"type":"object"},"result":{"type":"object"},"checkpoint":{"type":"object"}},"required":["id"],"additionalProperties":false}),
+        &metadata,
     )?;
-    if v["result"].to_string().len() > 32768 {
+    if v["result"].to_string().len() > 32768 || v["checkpoint"].to_string().len() > 32768 {
         return Err(bad("App job result exceeds 32 KiB"));
+    }
+    // Results are bounded stored documents, not executable action arguments.
+    if let Some(result) = v.get("result") {
+        input_schema::validate_native(&json!({"type":"object"}), result)?;
     }
     let t = merchant(a, h)?;
     let id = v["id"].as_str().unwrap();
     let mut tx = a.db.begin().await?;
-    let row=sqlx::query("SELECT action,actor,permission,package_digest,status,progress,lease,lease_until>now() AS valid,now()<started_at+interval '30 minutes' AS within_window,input FROM app_jobs WHERE tenant=$1 AND app=$2 AND id=$3 FOR UPDATE").bind(&t).bind(&m.id).bind(id).fetch_optional(&mut *tx).await?.ok_or(Error(StatusCode::NOT_FOUND,"App job not found".into()))?;
+    let row=sqlx::query("SELECT action,actor,permission,package_digest,status,progress,lease,lease_until>now() AS valid,now()<started_at+interval '30 minutes' AS within_window,input,result FROM app_jobs WHERE tenant=$1 AND app=$2 AND id=$3 FOR UPDATE").bind(&t).bind(&m.id).bind(id).fetch_optional(&mut *tx).await?.ok_or(Error(StatusCode::NOT_FOUND,"App job not found".into()))?;
     if row.get::<String, _>("package_digest") != approval::canonical_digest(m) {
         return Err(conflict("Job package changed; review before retrying"));
     }
@@ -54,6 +64,7 @@ pub(super) async fn execute(
         action.permission.as_deref().unwrap_or("apps.manage"),
     )?;
     gateway::additional_permissions(&identity, action)?;
+    lock_package_write(&mut tx, &t, m).await?;
     let state: String = row.get("status");
     let out = if op == "job_claim" {
         if state != "queued" {
@@ -63,7 +74,7 @@ pub(super) async fn execute(
         }
         let lease = uid();
         sqlx::query("UPDATE app_jobs SET status='running',lease=$4,lease_until=now()+interval '60 seconds',started_at=now(),updated_at=now(),revision=revision+1 WHERE tenant=$1 AND app=$2 AND id=$3").bind(&t).bind(&m.id).bind(id).bind(&lease).execute(&mut *tx).await?;
-        json!({"id":id,"action":row.get::<String,_>("action"),"input":row.get::<Value,_>("input"),"lease":lease,"leaseSeconds":60,"maximumMinutes":30})
+        json!({"id":id,"actor":row.get::<String,_>("actor"),"packageDigest":row.get::<String,_>("package_digest"),"action":row.get::<String,_>("action"),"input":row.get::<Value,_>("input"),"lease":lease,"leaseSeconds":60,"maximumMinutes":30,"checkpoint":row.get::<Option<Value>,_>("result").unwrap_or(json!({}))})
     } else {
         if !["running", "cancel_requested"].contains(&state.as_str())
             || !row.get::<Option<bool>, _>("valid").unwrap_or(false)
@@ -77,6 +88,12 @@ pub(super) async fn execute(
         let status = v["status"].as_str().unwrap_or("running");
         if state == "cancel_requested" && status == "running" {
             return Ok(json!({"cancelRequested":true}));
+        }
+        if !verified_kernel::job_completion_admissible(
+            state == "cancel_requested",
+            status == "succeeded",
+        ) {
+            return Err(conflict("Cancelled job cannot commit successful evidence"));
         }
         if status == "cancelled" && state != "cancel_requested" {
             return Err(conflict("No cancellation was requested"));
@@ -100,7 +117,8 @@ pub(super) async fn execute(
         }) {
             return Err(bad("Job messages require bounded localized text"));
         }
-        sqlx::query("UPDATE app_jobs SET status=$4,progress=$5,message=$6,result=CASE WHEN $4='succeeded' THEN $7 ELSE NULL END,lease_until=CASE WHEN $4='running' THEN now()+interval '60 seconds' ELSE NULL END,revision=revision+1,updated_at=now() WHERE tenant=$1 AND app=$2 AND id=$3").bind(&t).bind(&m.id).bind(id).bind(status).bind(if status=="succeeded"{100}else{progress as i32}).bind(message).bind(&v["result"]).execute(&mut *tx).await?;
+        job_evidence::save(&mut tx, &t, h, &identity, m, &row, v).await?;
+        sqlx::query("UPDATE app_jobs SET status=$4,progress=$5,message=$6,result=CASE WHEN $4='succeeded' THEN $7 ELSE COALESCE($8,result) END,lease_until=CASE WHEN $4='running' THEN now()+interval '60 seconds' ELSE NULL END,revision=revision+1,updated_at=now() WHERE tenant=$1 AND app=$2 AND id=$3").bind(&t).bind(&m.id).bind(id).bind(status).bind(if status=="succeeded"{100}else{progress as i32}).bind(message).bind(&v["result"]).bind(v.get("checkpoint")).execute(&mut *tx).await?;
         json!({"accepted":true,"cancelRequested":false})
     };
     tx.commit().await?;

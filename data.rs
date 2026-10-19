@@ -150,17 +150,32 @@ pub(crate) async fn save_tx(
     e: &Entity,
     v: &Value,
 ) -> Result<Value> {
+    write_tx(tx, t, m, e, v, false).await
+}
+/// Replayable native imports preserve the ordinary package -> route -> record lock order and all field validators.
+pub(crate) async fn import_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    t: &str,
+    m: &Manifest,
+    e: &Entity,
+    v: &Value,
+) -> Result<Value> {
+    write_tx(tx, t, m, e, v, true).await
+}
+async fn write_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    t: &str,
+    m: &Manifest,
+    e: &Entity,
+    v: &Value,
+    replay: bool,
+) -> Result<Value> {
     if !m.permissions.contains(&"data.write".into()) {
         return Err(Error(StatusCode::FORBIDDEN, "App needs data.write".into()));
     }
     super::lock_package_write(tx, t, m).await?;
-    let normalized;
-    let v = if m.id == "site_builder" {
-        normalized = json!({"id":v["id"],"revision":v["revision"],"fields":site_builder::normalize(&v["fields"])?});
-        &normalized
-    } else {
-        v
-    };
+    let normalized = normalize_input(m, v)?;
+    let v = &normalized;
     fields(e, &v["fields"])?;
     if m.id == "site_builder" {
         site_builder::validate(&e.name, &v["fields"])?;
@@ -200,6 +215,24 @@ pub(crate) async fn save_tx(
         .as_ref()
         .and_then(|r| r["revision"].as_i64())
         .unwrap_or(0);
+    if replay && let Some(row) = &current {
+        let prior: Value = e
+            .fields
+            .iter()
+            .map(|f| (f.name.clone(), row[&f.name].clone()))
+            .collect();
+        let incoming: Value = e
+            .fields
+            .iter()
+            .map(|f| (f.name.clone(), v["fields"][&f.name].clone()))
+            .collect();
+        if prior != incoming {
+            return Err(conflict(
+                "Imported app content differs; review an explicit update",
+            ));
+        }
+        return Ok(json!({"id":id,"revision":revision,"fields":v["fields"],"replayed":true}));
+    }
     if revision != expected {
         return Err(Error::revision(revision, "App record revision changed"));
     }
@@ -221,6 +254,16 @@ pub(crate) async fn save_tx(
         .await?;
     record_history::capture(tx, t, m, e, id, revision, &v["fields"]).await?;
     Ok(json!({"id":id,"revision":revision,"fields":v["fields"]}))
+}
+/// Every generic import and ordinary save uses the same app-owned normalization.
+pub(crate) fn normalize_input(m: &Manifest, v: &Value) -> Result<Value> {
+    if m.id == "site_builder" {
+        Ok(
+            json!({"id":v["id"],"revision":v["revision"],"fields":site_builder::normalize(&v["fields"])?}),
+        )
+    } else {
+        Ok(v.clone())
+    }
 }
 #[cfg(test)]
 mod tests {

@@ -243,6 +243,7 @@ mod tests {
     #[test]
     fn built_in_packages_are_valid() {
         for s in [
+            include_str!("../../extensions/apps/migration/manifest.json"),
             include_str!("../../extensions/apps/engraving/manifest.json"),
             include_str!("../../extensions/apps/paypal/manifest.json"),
             include_str!("../../extensions/apps/gift-message/manifest.json"),

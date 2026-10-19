@@ -25,9 +25,12 @@ pub(super) fn scope(permission: &str) -> Option<&'static str> {
         "channels.read" => "settings.read",
         "documents.read" => "documents.read",
         "customers.read" => "customers.read",
+        "customers.write" => "customers.write",
+        "settings.read" => "team.manage",
         "customers.pii" => "customers.pii",
         "products.read" => "catalog.read",
-        "products.write" => "catalog.write",
+        "products.write" | "reviews.write" => "catalog.write",
+        "promotions.write" => "automation.manage",
         "jobs.read" | "jobs.write" => "apps.manage",
         "assets.read" => "catalog.read",
         "assets.write" => "catalog.write",
@@ -72,7 +75,7 @@ async fn create(
     }
     let requested = v["permissions"]
         .as_array()
-        .filter(|v| !v.is_empty() && v.len() <= 9)
+        .filter(|v| !v.is_empty() && v.len() <= 32)
         .ok_or(bad("Explicit callback permissions required"))?;
     let mut scopes = Vec::new();
     for value in requested {

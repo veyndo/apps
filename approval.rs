@@ -8,6 +8,9 @@ pub(super) fn built_in(id: &str) -> Option<&'static str> {
         "site_forms" => Some(include_str!(
             "../../extensions/apps/site-forms/manifest.json"
         )),
+        "migration" => Some(include_str!(
+            "../../extensions/apps/migration/manifest.json"
+        )),
         "marketplaces" => Some(include_str!(
             "../../extensions/apps/marketplaces/manifest.json"
         )),
