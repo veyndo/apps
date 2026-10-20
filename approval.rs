@@ -30,6 +30,13 @@ pub(super) fn built_in(id: &str) -> Option<&'static str> {
         "gmail" => Some(include_str!("../../extensions/apps/gmail/manifest.json")),
         "email" => Some(include_str!("../../extensions/apps/email/manifest.json")),
         "slack" => Some(include_str!("../../extensions/apps/slack/manifest.json")),
+        "vercel" => Some(include_str!("../../extensions/apps/vercel/manifest.json")),
+        "klaviyo" => Some(include_str!("../../extensions/apps/klaviyo/manifest.json")),
+        "hubspot" => Some(include_str!("../../extensions/apps/hubspot/manifest.json")),
+        "contentful" => Some(include_str!(
+            "../../extensions/apps/contentful/manifest.json"
+        )),
+        "algolia" => Some(include_str!("../../extensions/apps/algolia/manifest.json")),
         _ => None,
     }
 }

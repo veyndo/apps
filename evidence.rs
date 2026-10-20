@@ -74,13 +74,23 @@ async fn ingest(a: &App, t: &str, app: &str, previous: i64, v: &Value) -> Result
             .filter(|s| !s.is_empty() && s.len() <= 150)
             .ok_or(bad("Invalid source ID"))?;
         if s["deleted"] == true {
-            sqlx::query("DELETE FROM app_evidence WHERE tenant=$1 AND app=$2 AND source_id=$3")
+            // The connector's existing reset tombstone must survive a lost action reply.
+            // It is still scoped to this admitted package and tenant.
+            sqlx::query("DELETE FROM app_evidence WHERE tenant=$1 AND app=$2 AND ($3='reset' OR source_id=$3)")
                 .bind(t)
                 .bind(app)
                 .bind(id)
                 .execute(&mut *tx)
                 .await?;
-            knowledge::sync_integration(&mut tx, t, app, id, s, true).await?;
+            knowledge::sync_integration(
+                &mut tx,
+                t,
+                app,
+                if id == "reset" { "" } else { id },
+                s,
+                true,
+            )
+            .await?;
             continue;
         }
         let title = s["title"]
