@@ -2,6 +2,7 @@
 use super::*;
 pub(crate) fn app_router() -> Router<App> {
     Router::new()
+        .merge(discovery::router())
         .merge(super::webhooks::router())
         .merge(evidence_routes::router())
         .merge(record_history::router())

@@ -8,17 +8,41 @@ pub(crate) struct AppChange {
     #[serde(default)]
     pub expected_app_revision: i64,
 }
-pub(crate) async fn planning_context(a: &App, t: &str, h: &RequestContext) -> Result<Value> {
-    let rows = sqlx::query(
-        "SELECT manifest FROM app_packages WHERE tenant=$1 AND active ORDER BY id LIMIT 8",
-    )
-    .bind(t)
-    .fetch_all(&a.db)
-    .await?;
+pub(crate) async fn planning_context(
+    a: &App,
+    t: &str,
+    h: &RequestContext,
+    query: &str,
+) -> Result<Value> {
+    let rows =
+        sqlx::query("SELECT manifest FROM app_packages WHERE tenant=$1 AND active ORDER BY id")
+            .bind(t)
+            .fetch_all(&a.db)
+            .await?;
+    let mut manifests = rows
+        .into_iter()
+        .map(|r| {
+            serde_json::from_value::<Manifest>(r.get("manifest"))
+                .map_err(|_| bad("Invalid app package"))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    manifests.retain(|m| {
+        m.actions.iter().any(|act| {
+            gateway::action_authorized(a, h, act)
+                && act.mcp != Some(false)
+                && m.intelligence
+                    .as_ref()
+                    .is_none_or(|ai| ai.tools.contains(&act.name))
+        })
+    });
+    manifests.sort_by_key(|m| {
+        (
+            std::cmp::Reverse(discovery::relevant(m, query)),
+            m.id.clone(),
+        )
+    });
     let mut context = vec![];
-    for row in rows {
-        let m: Manifest =
-            serde_json::from_value(row.get("manifest")).map_err(|_| bad("Invalid app package"))?;
+    for m in manifests.into_iter().take(8) {
         let mut records = vec![];
         if m.permissions.contains(&"data.read".into()) {
             for e in m
@@ -27,6 +51,7 @@ pub(crate) async fn planning_context(a: &App, t: &str, h: &RequestContext) -> Re
                 .filter(|e| {
                     m.actions.iter().any(|act| {
                         act.handler == "list"
+                            && act.mcp != Some(false)
                             && act.entity.as_deref() == Some(e.name.as_str())
                             && gateway::action_authorized(a, h, act)
                             && m.intelligence
@@ -44,6 +69,7 @@ pub(crate) async fn planning_context(a: &App, t: &str, h: &RequestContext) -> Re
                     .iter()
                     .find(|act| {
                         act.handler == "list"
+                            && act.mcp != Some(false)
                             && act.entity.as_deref() == Some(e.name.as_str())
                             && gateway::action_authorized(a, h, act)
                             && m.intelligence
@@ -81,6 +107,7 @@ pub(crate) async fn planning_context(a: &App, t: &str, h: &RequestContext) -> Re
             .iter()
             .filter(|act| {
                 gateway::action_authorized(a, h, act)
+                    && act.mcp != Some(false)
                     && m.intelligence
                         .as_ref()
                         .is_none_or(|ai| ai.tools.contains(&act.name))
@@ -216,9 +243,10 @@ fn bounded_context(v: &Value, depth: usize) -> Value {
 
 /// A proposal is untrusted model output; both selection and current action rights are checked before binding and committing.
 fn authorize_planned_action(m: &Manifest, action: &Action, h: &RequestContext) -> Result<()> {
-    if m.intelligence
-        .as_ref()
-        .is_some_and(|ai| !ai.tools.contains(&action.name))
+    if action.mcp == Some(false)
+        || m.intelligence
+            .as_ref()
+            .is_some_and(|ai| !ai.tools.contains(&action.name))
     {
         return Err(bad("App action is not selected for merchant planning"));
     }

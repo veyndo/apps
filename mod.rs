@@ -31,6 +31,7 @@ pub(crate) use package_fence::lock_package_write;
 mod core_documents;
 mod core_exchange;
 mod credentials;
+pub(crate) mod discovery;
 mod distribution;
 pub(crate) use consent::actor_permissions;
 pub(crate) use distribution::sign_package;
