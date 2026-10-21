@@ -82,6 +82,8 @@ pub(crate) use service_limits::ServiceLimits;
 mod observability;
 mod ontology;
 mod planning;
+mod planning_contracts;
+pub(crate) use planning_contracts::contracts as planning_contracts;
 mod runtime;
 pub(crate) use planning::*;
 mod form_layout;

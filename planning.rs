@@ -170,6 +170,9 @@ pub(crate) async fn bind_change(
     let mut args: Value =
         serde_json::from_str(&c.arguments_json).map_err(|_| bad("Invalid app arguments JSON"))?;
     data::fields(e, &args["fields"])?;
+    if m.id == "site_builder" {
+        site_builder::validate(&e.name, &args["fields"])?;
+    }
     let id = args["id"]
         .as_str()
         .filter(|s| !s.is_empty() && s.len() <= 100)
@@ -242,7 +245,11 @@ fn bounded_context(v: &Value, depth: usize) -> Value {
 }
 
 /// A proposal is untrusted model output; both selection and current action rights are checked before binding and committing.
-fn authorize_planned_action(m: &Manifest, action: &Action, h: &RequestContext) -> Result<()> {
+pub(super) fn authorize_planned_action(
+    m: &Manifest,
+    action: &Action,
+    h: &RequestContext,
+) -> Result<()> {
     if action.mcp == Some(false)
         || m.intelligence
             .as_ref()

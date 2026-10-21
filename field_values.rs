@@ -79,8 +79,18 @@ fn value(f: &Field, v: &Value) -> bool {
 }
 pub(super) fn validate(e: &Entity, v: &Value) -> Result<()> {
     let o = v.as_object().ok_or(bad("fields must be an object"))?;
-    if o.keys().any(|k| !e.fields.iter().any(|f| f.name == *k)) {
-        return Err(bad("Unknown entity field"));
+    let unknown = o
+        .keys()
+        .filter(|k| !e.fields.iter().any(|f| f.name == **k))
+        .take(8)
+        .map(|k| k.chars().take(64).collect::<String>())
+        .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+        return Err(bad(format!(
+            "Unknown entity field(s) in {}: {}",
+            e.name,
+            json!(unknown)
+        )));
     }
     for f in &e.fields {
         let v = &v[&f.name];
