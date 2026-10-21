@@ -1,10 +1,19 @@
 //! Atomic installation and additive schema upgrades; immutable version digests preserve history.
 use super::*;
 pub(crate) async fn package(a: &App, t: &str, id: &str, active: bool) -> Result<Manifest> {
+    package_on(&a.db, t, id, active).await
+}
+/// Lifecycle transactions use their current backend without recursively taking a pooled connection.
+pub(crate) async fn package_on<'e>(
+    db: impl sqlx::Executor<'e, Database = sqlx::Postgres>,
+    t: &str,
+    id: &str,
+    active: bool,
+) -> Result<Manifest> {
     let row = sqlx::query("SELECT manifest,active FROM app_packages WHERE tenant=$1 AND id=$2")
         .bind(t)
         .bind(id)
-        .fetch_optional(&a.db)
+        .fetch_optional(db)
         .await?
         .ok_or(Error(StatusCode::NOT_FOUND, "App not installed".into()))?;
     if active && !row.get::<bool, _>("active") {

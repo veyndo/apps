@@ -131,7 +131,7 @@ async fn app_state(
         .execute(&mut *tx)
         .await?;
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,7))")
-        .bind(&id)
+        .bind(format!("{t}:{id}"))
         .execute(&mut *tx)
         .await?;
     if !active
@@ -148,7 +148,7 @@ async fn app_state(
         ));
     }
     if active {
-        let m = package(&a, &t, &id, false).await?;
+        let m = package_on(&mut *tx, &t, &id, false).await?;
         consent::actor_permissions(&h, &m)?;
         approval::installation(&m)?;
         distribution::dependencies(&mut tx, &t, &m).await?;
