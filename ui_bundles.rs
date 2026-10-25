@@ -35,6 +35,12 @@ async fn load(
     )
     .map_err(|_| bad("Invalid UI URL"))?;
     let _admission = service_limits::admit(&a, &tenant(&h)?, &id).await?;
+    let html = fetch(url, digest).await?;
+    Ok(Json(
+        json!({"html":html,"digest":digest,"documentUrl":format!("/app-ui/{id}/{digest}"),"sandbox":"opaque-origin; gateway-only actions"}),
+    ))
+}
+pub(super) async fn fetch(url: reqwest::Url, digest: &str) -> Result<String> {
     let mut response = egress::client(&url)
         .await?
         .get(url)
@@ -71,7 +77,5 @@ async fn load(
             "App UI bundle changed; operator must review and approve its new digest".into(),
         ));
     }
-    Ok(Json(
-        json!({"html":html,"digest":digest,"sandbox":"opaque-origin; gateway-only actions"}),
-    ))
+    Ok(html.to_owned())
 }

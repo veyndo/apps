@@ -112,10 +112,16 @@ pub(crate) fn configuration(e: &Entity) -> bool {
         e.extends.is_some(),
         object == Some(Object::Product),
         object == Some(Object::Company),
+        e.operational == Some(true),
     )
 }
 
 pub(super) fn compatible(old: &Entity, next: &Entity) -> Result<()> {
+    if old.operational == Some(true) && next.operational != Some(true) {
+        return Err(conflict(
+            "Operational records cannot become publishable configuration",
+        ));
+    }
     if old.extends != next.extends {
         return Err(conflict(
             "Changing an installed extension binding requires an explicit offline migration",
@@ -190,5 +196,19 @@ mod tests {
                 .unwrap()
                 .contains_key("extends")
         );
+        assert!(
+            serde_json::to_value(&m).unwrap()["entities"][0]
+                .get("operational")
+                .is_none()
+        );
+    }
+    #[test]
+    fn operational_receipts_do_not_become_release_configuration() {
+        let mut m = package(Object::Product);
+        let original = m.entities[0].clone();
+        m.entities[0].operational = Some(true);
+        assert!(!configuration(&m.entities[0]));
+        assert!(compatible(&m.entities[0], &original).is_err());
+        assert!(compatible(&original, &m.entities[0]).is_ok());
     }
 }

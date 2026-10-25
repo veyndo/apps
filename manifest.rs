@@ -102,6 +102,9 @@ pub(crate) struct ConfigurationContract {
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct Entity {
+    /// Runtime receipts and locks never travel with sandbox configuration.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operational: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub extends: Option<super::core_extensions::Extension>,
     pub name: String,
@@ -243,6 +246,7 @@ mod tests {
     #[test]
     fn built_in_packages_are_valid() {
         for s in [
+            include_str!("../../extensions/apps/shopware-compat/manifest.json"),
             include_str!("../../extensions/apps/vercel/manifest.json"),
             include_str!("../../extensions/apps/klaviyo/manifest.json"),
             include_str!("../../extensions/apps/hubspot/manifest.json"),

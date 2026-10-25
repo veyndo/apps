@@ -271,6 +271,7 @@ mod tests {
     #[test]
     fn fields_reject_type_and_unknown_properties() {
         let e = Entity {
+            operational: None,
             extends: None,
             name: "config".into(),
             label: HashMap::new(),
