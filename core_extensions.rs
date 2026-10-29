@@ -97,7 +97,7 @@ pub(super) fn validate(m: &Manifest) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn access(e: &Entity, h: &RequestContext, write: bool) -> Result<()> {
+pub(crate) fn access(e: &Entity, h: &RequestContext, write: bool) -> Result<()> {
     if let Some(x) = &e.extends {
         for scope in x.object.scopes(write) {
             auth::permit(h, scope)?;

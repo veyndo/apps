@@ -305,7 +305,7 @@ pub(super) fn action_authorized(a: &App, h: &RequestContext, action: &Action) ->
 }
 
 /// Additional current team rights apply equally to UI, HTTP, MCP, Flow and leased workers.
-pub(super) fn additional_permissions(h: &RequestContext, action: &Action) -> Result<()> {
+pub(crate) fn additional_permissions(h: &RequestContext, action: &Action) -> Result<()> {
     if action.handler == "configurations" {
         auth::permit(h, "orders.read")?;
     }

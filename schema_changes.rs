@@ -79,6 +79,7 @@ fn contract(a: &Field, b: &Field) -> bool {
         && a.translatable == b.translatable
         && a.references == b.references
         && a.core_reference == b.core_reference
+        && a.validation == b.validation
         && a.choices
             .iter()
             .all(|v| b.choices.iter().any(|n| n.value == v.value))
