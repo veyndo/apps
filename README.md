@@ -49,3 +49,5 @@ The [source inventory](../../docs/module-inventory.md) is checked in CI. [The be
 - `business_capability/`: canonical localized merchant intent and bounded synthetic
   decision cases. Existing WIT isolation executes them before build/installation;
   no new executor, live-data reader, approval ledger or pricing implementation.
+
+- [upgrade_review.rs](upgrade_review.rs): Rollback-only actual installation admission and minimized migration metadata.

@@ -27,6 +27,7 @@ pub(crate) mod core_extensions;
 pub(crate) mod extension_filter;
 mod extension_projection;
 mod package_fence;
+mod upgrade_review;
 pub(crate) use package_fence::lock_package_write;
 mod core_documents;
 mod core_exchange;

@@ -75,22 +75,22 @@ async fn review(
     h: RequestContext,
     Json(v): Json<Value>,
 ) -> Result<Json<Value>> {
-    let t = merchant(&a, &h)?;
+    let mut t = merchant(&a, &h)?;
+    if let Some(environment) = v["environment"].as_str().filter(|e| !e.is_empty()) {
+        auth::permit(&h, "developer.manage")?;
+        staging::owned(&a, &t, environment).await?;
+        t = environment.into();
+    }
     let m = decode(&v)?;
     actor_permissions(&h, &m)?;
-    let previous: Option<Value> =
-        sqlx::query_scalar("SELECT manifest FROM app_packages WHERE tenant=$1 AND id=$2")
-            .bind(&t)
-            .bind(&m.id)
-            .fetch_optional(&a.db)
-            .await?;
-    let old = previous.as_ref().and_then(|v| v["permissions"].as_array());
+    let (previous, upgrade) = upgrade_review::inspect(&a, &t, &m).await?;
+    let old = previous.as_ref().map(|v| &v.permissions);
     let added = m
         .permissions
         .iter()
-        .filter(|p| old.is_none_or(|v| !v.iter().any(|v| v == p.as_str())))
+        .filter(|p| old.is_none_or(|v| !v.contains(p)))
         .collect::<Vec<_>>();
     Ok(Json(
-        json!({"app":m.id,"name":m.name,"version":m.version,"digest":approval::canonical_digest(&m),"permissions":m.permissions,"added":added,"previousVersion":previous.map(|v|v["version"].clone())}),
+        json!({"app":m.id,"name":m.name,"version":m.version,"digest":approval::canonical_digest(&m),"permissions":m.permissions,"added":added,"previousVersion":previous.map(|v|v.version),"upgrade":upgrade}),
     ))
 }
