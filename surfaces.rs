@@ -39,8 +39,51 @@ pub(crate) fn validate_contract(m: &Manifest) -> Result<()> {
     if m.surfaces.len() > 16 || m.api_routes.len() > 24 {
         return Err(bad("App surface/route limit exceeded"));
     }
-    for s in &m.surfaces {
+    for (surface_index, s) in m.surfaces.iter().enumerate() {
         let private = s.location.starts_with("admin.");
+        for (action_index, name) in s.actions.iter().enumerate() {
+            if !m
+                .actions
+                .iter()
+                .any(|a| a.name == *name && (private || a.public))
+            {
+                return Err(Error::validation(
+                    &format!("/surfaces/{surface_index}/actions/{action_index}"),
+                    format!(
+                        "Surface {} refers to unavailable action {name}; use a declared action allowed for this surface",
+                        s.id
+                    ),
+                ));
+            }
+        }
+        if (m.runtime != "service" || s.location == "storefront.block")
+            && !native_views::is_native(m, s)
+        {
+            return Err(Error::validation(
+                &format!("/surfaces/{surface_index}/uiPath"),
+                "Native surface uiPath must be native/ followed by an existing view ID".into(),
+            ));
+        }
+        let slot_permission = if private {
+            "admin.slot"
+        } else {
+            "storefront.slot"
+        };
+        if !m.permissions.iter().any(|p| p == slot_permission) {
+            return Err(Error::validation(
+                "/permissions",
+                format!(
+                    "Surface {} requires declared permission {slot_permission}",
+                    s.id
+                ),
+            ));
+        }
+        if s.permission
+            .as_deref()
+            .is_some_and(|p| !private || !auth::SCOPES.contains(&p))
+        {
+            return Err(Error::validation(&format!("/surfaces/{surface_index}/permission"), "Surface permission must be a current team scope for private admin surfaces or null for public surfaces".into()));
+        }
         if !identifier(&s.id)
             || !ids.insert(&s.id)
             || ![
@@ -68,15 +111,6 @@ pub(crate) fn validate_contract(m: &Manifest) -> Result<()> {
                 "account.overview",
             ]
             .contains(&s.location.as_str())
-            || (m.runtime != "service" && !native_views::is_native(m, s))
-            || (s.location == "storefront.block" && !native_views::is_native(m, s))
-            || !m.permissions.iter().any(|p| {
-                p == if private {
-                    "admin.slot"
-                } else {
-                    "storefront.slot"
-                }
-            })
             || s.ui_path.is_empty()
             || s.ui_path.len() > 160
             || s.ui_path.split('/').any(|p| {
@@ -88,16 +122,11 @@ pub(crate) fn validate_contract(m: &Manifest) -> Result<()> {
                         .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.')
             })
             || s.actions.len() > 24
-            || s.actions.iter().any(|n| {
-                !m.actions
-                    .iter()
-                    .any(|a| a.name == *n && (private || a.public))
-            })
-            || s.permission
-                .as_deref()
-                .is_some_and(|p| !private || !auth::SCOPES.contains(&p))
         {
-            return Err(bad("Invalid app UI surface or exposed action"));
+            return Err(Error::validation(
+                &format!("/surfaces/{surface_index}"),
+                "Invalid app UI surface or exposed action".into(),
+            ));
         }
     }
     let mut routes = std::collections::HashSet::new();

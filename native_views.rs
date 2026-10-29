@@ -58,7 +58,7 @@ pub(super) fn validate(m: &Manifest) -> Result<()> {
     if m.views.len() > 16 {
         return Err(bad("Native view limit/runtime invalid"));
     }
-    for v in &m.views {
+    for (view_index, v) in m.views.iter().enumerate() {
         let mut blocks = std::collections::HashSet::new();
         if !identifier(&v.id)
             || !views.insert(&v.id)
@@ -67,7 +67,7 @@ pub(super) fn validate(m: &Manifest) -> Result<()> {
         {
             return Err(bad("Invalid native view"));
         }
-        for b in &v.blocks {
+        for (block_index, b) in v.blocks.iter().enumerate() {
             form_layout::validate(b)?;
             if !identifier(&b.id)
                 || !blocks.insert(&b.id)
@@ -95,15 +95,25 @@ pub(super) fn validate(m: &Manifest) -> Result<()> {
                 return Err(bad("Unknown block entity"));
             }
             super::editor_contract::validate_binding(m, &v.id, b)?;
-            for (name, handler) in [(&b.read_action, "list"), (&b.write_action, "save")] {
+            for (name, handler, property) in [
+                (&b.read_action, "list", "readAction"),
+                (&b.write_action, "save", "writeAction"),
+            ] {
+                let pointer = format!("/views/{view_index}/blocks/{block_index}/{property}");
                 if let Some(name) = name {
                     if !m.actions.iter().any(|a| {
                         &a.name == name && a.handler == handler && a.entity.as_ref() == Some(entity)
                     }) {
-                        return Err(bad("Invalid native block action binding"));
+                        return Err(Error::validation(
+                            &pointer,
+                            "Invalid native block action binding".into(),
+                        ));
                     }
                 } else if handler == "list" || b.kind == "form" || b.inline_edit {
-                    return Err(bad("Native block action required"));
+                    return Err(Error::validation(
+                        &pointer,
+                        "Native block action required".into(),
+                    ));
                 }
             }
             if b.inline_edit && b.kind != "table" {
