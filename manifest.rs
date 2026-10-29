@@ -246,7 +246,6 @@ mod tests {
     #[test]
     fn built_in_packages_are_valid() {
         for s in [
-            include_str!("../../extensions/apps/shopware-compat/manifest.json"),
             include_str!("../../extensions/apps/vercel/manifest.json"),
             include_str!("../../extensions/apps/klaviyo/manifest.json"),
             include_str!("../../extensions/apps/hubspot/manifest.json"),

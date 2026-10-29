@@ -2,9 +2,6 @@
 use super::*;
 pub(super) fn built_in(id: &str) -> Option<&'static str> {
     match id {
-        "shopware_compat" => Some(include_str!(
-            "../../extensions/apps/shopware-compat/manifest.json"
-        )),
         "site_builder" => Some(include_str!(
             "../../extensions/apps/site-builder/manifest.json"
         )),
