@@ -1,12 +1,24 @@
 //! Probe the actual transactional installer and roll it back; return admission metadata, never app record contents.
 use super::*;
-pub(super) async fn inspect(a: &App, t: &str, m: &Manifest) -> Result<(Option<Manifest>, Value)> {
+pub(super) async fn inspect(
+    a: &App,
+    live: &str,
+    environment: Option<&str>,
+    m: &Manifest,
+) -> Result<(Option<Manifest>, Value)> {
     let mut tx = a.db.begin_privileged().await?;
     sqlx::query(
         "SELECT set_config('lock_timeout','2s',true),set_config('statement_timeout','10s',true)",
     )
     .execute(&mut *tx)
     .await?;
+    // Child ownership is system metadata: retain the exact parent/private-stage guard in this bounded transaction.
+    let t = if let Some(environment) = environment {
+        staging::owned_on(&mut *tx, live, environment).await?;
+        environment
+    } else {
+        live
+    };
     crate::marketing::lock_config(&mut tx, t).await?;
     let previous: Option<Value> =
         sqlx::query_scalar("SELECT manifest FROM app_packages WHERE tenant=$1 AND id=$2")

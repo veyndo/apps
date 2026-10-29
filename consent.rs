@@ -75,15 +75,14 @@ async fn review(
     h: RequestContext,
     Json(v): Json<Value>,
 ) -> Result<Json<Value>> {
-    let mut t = merchant(&a, &h)?;
-    if let Some(environment) = v["environment"].as_str().filter(|e| !e.is_empty()) {
+    let t = merchant(&a, &h)?;
+    let environment = v["environment"].as_str().filter(|e| !e.is_empty());
+    if environment.is_some() {
         auth::permit(&h, "developer.manage")?;
-        staging::owned(&a, &t, environment).await?;
-        t = environment.into();
     }
     let m = decode(&v)?;
     actor_permissions(&h, &m)?;
-    let (previous, upgrade) = upgrade_review::inspect(&a, &t, &m).await?;
+    let (previous, upgrade) = upgrade_review::inspect(&a, &t, environment, &m).await?;
     let old = previous.as_ref().map(|v| &v.permissions);
     let added = m
         .permissions
