@@ -105,6 +105,7 @@ async fn app_install(
                 mode: "app".into(),
                 provider: None,
                 provider_method: None,
+                capture_mode: None,
             });
             sqlx::query("UPDATE commerce_settings SET data=$1,revision=revision+1 WHERE tenant=$2")
                 .bind(json!(config))
