@@ -28,7 +28,9 @@ pub(super) fn payload(m: &Manifest, kind: &str, data: Value) -> Value {
     if permission(m, "customers.pii")
         && (kind.starts_with("customer.")
             || kind.starts_with("consumer.")
-            || kind.starts_with("order."))
+            || kind.starts_with("order.")
+            || kind == "payment.instructions.available"
+                && permission(m, "payments.instructions.read"))
     {
         return data;
     }
@@ -49,6 +51,8 @@ pub(super) fn payload(m: &Manifest, kind: &str, data: Value) -> Value {
                 "simulation",
                 "salesChannelId",
             ]
+        } else if kind == "payment.instructions.available" {
+            &["orderId", "attemptId"]
         } else if kind.starts_with("pos.") {
             &[
                 "orderId",
@@ -151,6 +155,32 @@ pub(super) fn validate(m: &Manifest) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn recipient_instructions_need_explicit_financial_and_pii_consent() {
+        let mut m: Manifest = serde_json::from_str(approval::built_in("slack").unwrap()).unwrap();
+        let value = json!({"orderId":"o","attemptId":"a","paymentInstructions":{"iban":"private"},"order":{"email":"private"}});
+        let minimized = json!({"orderId":"o","attemptId":"a"});
+        assert_eq!(
+            payload(&m, "payment.instructions.available", value.clone()),
+            minimized
+        );
+        m.permissions.push("customers.pii".into());
+        assert_eq!(
+            payload(&m, "payment.instructions.available", value.clone()),
+            minimized
+        );
+        m.permissions.retain(|p| p != "customers.pii");
+        m.permissions.push("payments.instructions.read".into());
+        assert_eq!(
+            payload(&m, "payment.instructions.available", value.clone()),
+            minimized
+        );
+        m.permissions.push("customers.pii".into());
+        assert_eq!(
+            payload(&m, "payment.instructions.available", value.clone()),
+            value
+        );
+    }
     #[test]
     fn fulfillment_events_keep_links_but_never_project_addresses_or_tokens() {
         let mut m: Manifest = serde_json::from_str(approval::built_in("slack").unwrap()).unwrap();

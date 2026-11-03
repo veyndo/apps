@@ -67,7 +67,10 @@ pub(super) fn approved(m: &Manifest, service: &Value) -> bool {
     let pinned = service["approvedDigests"]
         .as_array()
         .is_some_and(|pins| pins.iter().any(|p| p.as_str() == Some(digest.as_str())));
-    let bundled = [built_in(&m.id), legacy_built_in(&m.id)]
+    let previous = (m.id == "email").then_some(include_str!(
+        "../../extensions/apps/email/manifest-1.2.0.json"
+    ));
+    let bundled = [built_in(&m.id), legacy_built_in(&m.id), previous]
         .into_iter()
         .flatten()
         .filter_map(|s| serde_json::from_str::<Manifest>(s).ok())
@@ -96,6 +99,21 @@ pub(crate) fn print_digest() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn email_upgrade_keeps_exact_previous_package_without_inheriting_new_consent() {
+        let mut m: Manifest = serde_json::from_str(include_str!(
+            "../../extensions/apps/email/manifest-1.2.0.json"
+        ))
+        .unwrap();
+        assert!(approved(&m, &json!({})));
+        assert!(
+            !m.permissions
+                .iter()
+                .any(|p| p == "payments.instructions.read")
+        );
+        m.permissions.push("payments.instructions.read".into());
+        assert!(!approved(&m, &json!({})));
+    }
     #[test]
     fn modified_reserved_payment_package_does_not_inherit_operator_authority() {
         let mut m: Manifest = serde_json::from_str(built_in("shopware_payments").unwrap()).unwrap();

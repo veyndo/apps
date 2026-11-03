@@ -36,6 +36,11 @@ pub(crate) fn actor_permissions(h: &RequestContext, m: &Manifest) -> Result<()> 
         if p == "knowledge.write" {
             auth::permit(h, "apps.manage")?;
         }
+        if p == "payments.instructions.read" {
+            for scope in ["payments.read", "orders.read", "customers.pii"] {
+                auth::permit(h, scope)?;
+            }
+        }
         if p == "payments.provider" {
             auth::permit(h, "payments.manage")?;
         }
