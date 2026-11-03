@@ -51,6 +51,8 @@ pub(super) fn payload(m: &Manifest, kind: &str, data: Value) -> Value {
                 "simulation",
                 "salesChannelId",
             ]
+        } else if kind == "payment.instrument.revoked" {
+            &["instrumentId"]
         } else if kind == "payment.instructions.available" {
             &["orderId", "attemptId"]
         } else if kind.starts_with("pos.") {

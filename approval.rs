@@ -70,11 +70,19 @@ pub(super) fn approved(m: &Manifest, service: &Value) -> bool {
     let previous = (m.id == "email").then_some(include_str!(
         "../../extensions/apps/email/manifest-1.2.0.json"
     ));
-    let bundled = [built_in(&m.id), legacy_built_in(&m.id), previous]
-        .into_iter()
-        .flatten()
-        .filter_map(|s| serde_json::from_str::<Manifest>(s).ok())
-        .any(|original| canonical_digest(&original) == digest);
+    let previous_payment = (m.id == "shopware_payments").then_some(include_str!(
+        "../../extensions/apps/shopware-payments/manifest-1.5.0.json"
+    ));
+    let bundled = [
+        built_in(&m.id),
+        legacy_built_in(&m.id),
+        previous,
+        previous_payment,
+    ]
+    .into_iter()
+    .flatten()
+    .filter_map(|s| serde_json::from_str::<Manifest>(s).ok())
+    .any(|original| canonical_digest(&original) == digest);
     crate::verified_kernel::app_package_authorized(pinned, bundled)
 }
 pub(super) fn installation(m: &Manifest) -> Result<()> {
