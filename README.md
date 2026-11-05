@@ -35,19 +35,14 @@ checks its expected digest, authorizes reserved/provider packages and owns insta
 upgrade, revocation, secret storage and commit. This is not a token issuer or a
 standalone authentication service.
 
-Settings declarations/updates, secret-safe projections and explicit schema evolution
-planning are also shared through [the pure model package](model/README.md#settings-and-explicit-model-upgrades).
-Encryption, current authority and actual transactional migrations stay with the host.
+## Reusable model contracts
 
-The [pure model event contracts](model/README.md#events-schedules-and-incoming-webhooks)
-also share subscription/privacy rules, projected filters, bounded delivery and
-schedule/webhook declarations. URL policy is required; actual delivery, signatures,
-current authority and queues remain host-owned.
-
-[Object bindings and graph contracts](model/README.md#native-object-bindings-and-graph-views)
-share product/customer/order/company declaration rules and selected-field graph
-projections. Actual object rights, scoped lists and verified release admission
-remain host responsibilities.
+| Capability | Contract and host boundary |
+| --- | --- |
+| Settings and schema evolution | [Strict updates, secret-safe projections and explicit upgrades](model/README.md#settings-and-explicit-model-upgrades); encryption and transactions stay with the host. |
+| Events and triggers | [Subscriptions, privacy, filters, schedules and webhooks](model/README.md#events-schedules-and-incoming-webhooks); URL policy, signatures and queues stay with the host. |
+| Object bindings and graph | [Product/customer/order/company declarations and graph views](model/README.md#native-object-bindings-and-graph-views); actual object rights and scoped lists stay with the host. |
+| Placements and HTTP routes | [Strict surface/route grammar](model/README.md#placements-and-named-http-routes); native views, known team scopes and read-only effects require trusted host policies. |
 
 ## What is shared with Veyndo
 

@@ -30,4 +30,5 @@ jobs:
       - run: cargo run --locked --example upgrade_settings
       - run: cargo run --locked --example event_contracts
       - run: cargo run --locked --example object_graph
+      - run: cargo run --locked --example surface_routes
       - run: cargo test --locked --test postgres -- --ignored --nocapture

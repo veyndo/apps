@@ -1,6 +1,6 @@
 [package]
 name = "veyndo-app-model"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2024"
 license-file = "../LICENSE"
 description = "Pure app model contracts, bounded schema and field validation extracted from Veyndo"
