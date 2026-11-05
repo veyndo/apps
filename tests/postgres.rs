@@ -144,6 +144,54 @@ async fn independent_postgres_contract() -> Result<(), Box<dyn std::error::Error
     assert!(jobs::claim(&mut tx, own, "one", "lease-one").await?);
     assert!(!jobs::claim(&mut tx, own, "one", "another-lease").await?);
     tx.commit().await?;
+    let mut expired = pool.begin().await?;
+    jobs::enqueue(&mut expired, &job(own, "expired", "expired-key", &input)).await?;
+    jobs::claim(&mut expired, own, "expired", "expired-lease").await?;
+    expired.commit().await?;
+    sqlx::query("UPDATE app_jobs SET lease_until=now()-interval '1 second' WHERE tenant='own' AND id='expired'").execute(&pool).await?;
+    let empty = json!({});
+    let mut expired = pool.begin().await?;
+    assert!(
+        !progress::advance(
+            &mut expired,
+            own,
+            "expired",
+            &progress::Progress {
+                lease: "expired-lease",
+                status: "succeeded",
+                progress: 100,
+                message: &empty,
+                result: &empty,
+                checkpoint: None
+            }
+        )
+        .await?
+    );
+    assert!(!jobs::claim(&mut expired, own, "expired", "reclaim").await?);
+    expired.rollback().await?;
+    let before: i64 = sqlx::query_scalar("SELECT count(*) FROM outbox")
+        .fetch_one(&pool)
+        .await?;
+    let mut rejected = job(own, "outbox-failure", "outbox-key", &input);
+    rejected.event_kind = "reject-fixture";
+    let mut rejected_tx = pool.begin().await?;
+    assert!(matches!(
+        jobs::enqueue(&mut rejected_tx, &rejected).await,
+        Err(veyndo_app_storage::Error::Database(_))
+    ));
+    rejected_tx.rollback().await?;
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM app_jobs WHERE id='outbox-failure'")
+            .fetch_one(&pool)
+            .await?,
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM outbox")
+            .fetch_one(&pool)
+            .await?,
+        before
+    );
     pool.close().await;
     let pool = PgPool::connect(&url).await?; // Restart the host connection; state is not process-local.
     let mut tx = pool.begin().await?;
