@@ -87,7 +87,7 @@ fn total_declared_indexes_are_bounded_before_installing_models() {
     rejected(&m, "Maximum 64 declared indexes");
 }
 #[test]
-fn configuration_requires_declared_private_rules_and_wasm_policy() {
+fn configuration_requires_declared_price_fields_capabilities_and_wasm_policy() {
     let good = configured();
     compile(&good).unwrap();
     for (key, value) in [
