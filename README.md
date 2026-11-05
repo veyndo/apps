@@ -10,6 +10,15 @@ standalone app host, permission adapter, complete package compiler, API/MCP serv
 cutover remain on the [component task list](https://github.com/veyndo/veyndo/blob/main/docs/commerce-components.md).
 The library is a trusted host port, not a browser API or an authentication boundary.
 
+## Independent Wasm runtime
+
+[`veyndo-app-runtime`](runtime/) executes the actual core-Wasm/WIT hooks independently.
+It retains isolated stores, bounded fuel/memory/host calls and required host resource
+admission. The Core adapter supplies its verified predicate; there is no dependency
+on the Core or kernel crate. Run the [quote example](runtime/examples/quote.rs) without
+SQL or a Veyndo process. Current identities, snapshots and applying results remain
+host responsibilities.
+
 ## Pure model package
 
 [`veyndo-app-model`](model/) has no SQL or network dependency. It exports the exact

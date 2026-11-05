@@ -1,0 +1,22 @@
+package veyndo:commerce@1.0.0;
+
+interface context {
+    record money { minor: s64, currency: string, scale: u8 }
+    record cart-item { id: string, quantity: u32, price: money }
+    record cart-snapshot { items: list<cart-item>, subtotal: money }
+    record product-snapshot { id: string, stock: u32, price: money }
+    record app-record { id: string, revision: u64, fields-json: string }
+    cart: func() -> cart-snapshot;
+    product: func(id: string) -> option<product-snapshot>;
+    %record: func(entity: string, id: string) -> option<app-record>;
+}
+interface hooks {
+    use context.{money};
+    enum kind { price, shipping, discount, validation }
+    record outcome { adjustment: money, accepted: bool, reason-code: string }
+    evaluate: func(hook: kind, input: string) -> outcome;
+}
+world extension {
+    import context;
+    export hooks;
+}

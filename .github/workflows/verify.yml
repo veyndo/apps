@@ -33,3 +33,18 @@ jobs:
       - run: cargo run --locked --example surface_routes
       - run: cargo run --locked --example native_views
       - run: cargo test --locked --test postgres -- --ignored --nocapture
+
+  runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: runtime
+      - run: cargo fmt --manifest-path runtime/Cargo.toml --check
+      - run: cargo clippy --locked --manifest-path runtime/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --locked --manifest-path runtime/Cargo.toml
+      - run: cargo run --locked --manifest-path runtime/Cargo.toml --example quote -- 25000
