@@ -3,7 +3,7 @@
 Pure Rust model contracts extracted from Veyndo's native app owner. This package
 has no SQL, network, identity resolver or Veyndo application dependency.
 
-- `Entity`, `Field`, `Choice` and extension types preserve exact native wire defaults.
+- `Action`, `Entity`, `Field`, `Choice` and extension types preserve exact native wire defaults.
 - `declarations::validate` checks model/field identifiers, relationships, choice
   labels, index budgets, publication and workflow declarations.
 - `schema` owns the closed action-input grammar and bounded recursive evaluation.
@@ -34,3 +34,11 @@ cargo clippy --workspace --locked --all-targets -- -D warnings
 
 The native host retains its existing HTTP/MCP/Flow routes and calls this package.
 A separately authenticated standalone app service is still on the extraction list.
+
+`admission::check` requires a host `Authority` to resolve the merchant and current
+scopes. `additional` and `requested_scopes` require the narrower `ScopeAuthority`.
+There are no default grants. Action definitions must come from a fully validated,
+consented package, not the action request body. Public-action classification,
+MCP exposure and callback key issuance retain their full package/host checks.
+`callback_facts` supplies independent consent/role facts to the host's existing
+verified predicate; it does not authenticate a caller or approve a callback alone.
