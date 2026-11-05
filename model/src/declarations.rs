@@ -10,7 +10,7 @@ pub fn identifier(s: &str) -> bool {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'_')
         && s.as_bytes()[0].is_ascii_lowercase()
 }
-fn editor_fields<P: ReferencePolicy>(e: &Entity, policy: &P) -> Result<()> {
+pub fn validate_fields<P: ReferencePolicy>(e: &Entity, policy: &P) -> Result<()> {
     for f in &e.fields {
         if let Some(kind) = f.core_reference.as_deref()
             && (!matches!(
@@ -76,7 +76,7 @@ pub fn validate<P: ReferencePolicy>(entities: &[Entity], policy: &P) -> Result<(
             return Err(bad("Invalid entity"));
         }
         let mut fields = std::collections::HashSet::new();
-        editor_fields(e, policy)?;
+        validate_fields(e, policy)?;
         fields::contract(e)?;
         for f in &e.fields {
             if (f.kind == "relations"
