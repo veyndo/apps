@@ -1488,7 +1488,7 @@ dependencies = [
 
 [[package]]
 name = "veyndo-app-storage"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "chrono",
  "serde_json",

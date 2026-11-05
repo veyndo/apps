@@ -107,6 +107,18 @@
         "src/apps/editor_contract.rs"
       ],
       "boundary": "Strict native views, geometry, context bindings, UI AST/type/allowlist budgets and scoped payload projection; mandatory native currency/content/value and verified public-read policies. Actual identity, grants, execution, references, publication and current rights remain host owners."
+    },
+    {
+      "sourceCommit": "5597d80190e685c04c790df797384400e892cb03",
+      "sourceOwners": [
+        "crates/apps/src/sandbox.rs",
+        "crates/apps/src/sandbox/configuration.rs",
+        "crates/apps/src/sandbox_engine.rs",
+        "crates/apps/src/component_runtime.rs",
+        "crates/apps/src/component_runtime/abi.rs",
+        "extensions/sdk/wit/commerce.wit"
+      ],
+      "boundary": "Actual bounded Wasmtime core/component executor behind required trusted-host resource admission and explicit legacy namespace configuration. Native verified resource predicate remains the production adapter. Original isolated stores, fuel/epoch/host-call/snapshot/outcome limits and read-only WIT ABI preserved; no identities, SQL, WASI, external effects, or platform policy authority."
     }
   ]
 }
