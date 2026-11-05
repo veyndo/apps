@@ -59,6 +59,15 @@
         "src/apps/manifest.rs"
       ],
       "boundary": "Shared package envelope/model/action/slot/event grammar and required ordered native extension validators; full strict package decoding, domain extensions, Wasm/reference policy and identity/trust remain trusted host ports."
+    },
+    {
+      "sourceCommit": "4b67dc048c41bf3bf8acfe8b6773cd4c0db83cc2",
+      "sourceOwners": [
+        "src/apps/settings.rs",
+        "src/apps/schema_changes.rs",
+        "src/apps/core_extensions.rs"
+      ],
+      "boundary": "Strict settings declarations, bounded value merge/secret-safe projections and pure schema evolution planning/conversion. Encryption, identity/consent, actual migrations and checked field/reference writes remain native transactional owners."
     }
   ]
 }

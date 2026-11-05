@@ -2,6 +2,7 @@
 pub mod admission;
 pub mod declarations;
 mod error;
+pub mod evolution;
 pub mod fields;
 pub mod language;
 pub mod lifecycle;
@@ -10,6 +11,7 @@ mod package_actions;
 pub mod publication;
 pub mod schema;
 mod schema_contract;
+pub mod settings;
 mod types;
 pub use error::{Error, Kind};
 pub use types::{Action, Choice, Entity, Extension, Field, Object, Slot};

@@ -35,6 +35,10 @@ checks its expected digest, authorizes reserved/provider packages and owns insta
 upgrade, revocation, secret storage and commit. This is not a token issuer or a
 standalone authentication service.
 
+Settings declarations/updates, secret-safe projections and explicit schema evolution
+planning are also shared through [the pure model package](model/README.md#settings-and-explicit-model-upgrades).
+Encryption, current authority and actual transactional migrations stay with the host.
+
 ## What is shared with Veyndo
 
 - Fixed-table record get/put, bounded model scans, model definitions and precisely
