@@ -8,5 +8,15 @@
     "jobs.rs",
     "job_callbacks.rs"
   ],
-  "method": "git subtree split; storage SQL moved behind explicit connection/scope ports; native authorization remains with the host"
+  "method": "git subtree split; storage SQL moved behind explicit connection/scope ports; native authorization remains with the host",
+  "additionalExtractions": [
+    {
+      "sourceCommit": "c6555a81c57b315c6525d6714929516950529035",
+      "sourceOwners": [
+        "src/apps/data.rs",
+        "src/apps/publication.rs"
+      ],
+      "boundary": "Record CAS/replay/write/outbox sequencing and parameter-bound pages; current model, identity, lifecycle and audit admission remain host ports."
+    }
+  ]
 }

@@ -15,6 +15,14 @@ The library is a trusted host port, not a browser API or an authentication bound
 - Fixed-table record get/put, bounded model scans, model definitions and precisely
   scoped preview cleanup. The native caller retains field/reference validation,
   CAS, language inheritance, history, quotas, signed RLS and publication rules.
+- The shared record write pipeline locks one scoped record, checks CAS and import
+  replay, invokes mandatory host workflow/history hooks and writes the minimized
+  `app.record.changed` event in the caller's transaction. A host error requires
+  rollback; no transaction is committed by this package. Revision overflow is
+  rejected explicitly.
+- Bounded keyset pages reuse shared typed equality indexes. Public status/channel/
+  schedule predicates use bound field names and values. The host admits declared
+  index fields and projects only currently visible fields before returning rows.
 - Durable app job enqueue with the original tenant-wide serialization, request
   fingerprint, package/action binding, quotas and one atomic job/outbox handoff.
 - Scoped job reads, single-winner claim and lease-fenced progress persistence.
@@ -63,7 +71,9 @@ database and installs `tests/schema.sql` there. This minimum test schema contain
 no Veyndo identity or commerce tables. It verifies composite record scope,
 transaction rollback, atomic job/outbox handoff, concurrent idempotency, changed
 request rejection, claims, progress/cancellation fences, quotas, connection restart
-and scoped preview cleanup. CI runs it against actual PostgreSQL 17.
+and scoped preview cleanup. Additional cases cover record CAS races, replay,
+host hook/outbox rollback, typed filters, publication and hostile bound values.
+CI runs it against actual PostgreSQL 17.
 
 The minimum test schema is not a production app schema or replacement for the
 native signed RLS, references, model validation and storage accounting. Native

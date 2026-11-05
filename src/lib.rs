@@ -1,7 +1,9 @@
 //! Scoped storage ports for trusted hosts; no identity resolution, pool creation, service dispatch or schema installation.
 mod error;
 pub mod jobs;
+pub mod mutations;
 pub mod progress;
+pub mod queries;
 pub mod records;
 pub use error::Error;
 

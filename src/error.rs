@@ -2,6 +2,7 @@
 #[derive(Debug)]
 pub enum Error {
     Database(sqlx::Error),
+    Invalid(&'static str),
     Conflict(&'static str),
     Quota(&'static str),
 }
@@ -14,7 +15,7 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Database(e) => write!(f, "{e}"),
-            Self::Conflict(s) | Self::Quota(s) => f.write_str(s),
+            Self::Invalid(s) | Self::Conflict(s) | Self::Quota(s) => f.write_str(s),
         }
     }
 }

@@ -1,4 +1,8 @@
 //! Actual independent PostgreSQL persistence: composite scope, atomic handoff, replay, quota, restart and lease fences.
+#[path = "cases/mutations.rs"]
+mod mutation_cases;
+#[path = "cases/queries.rs"]
+mod query_cases;
 use serde_json::json;
 use sqlx::{PgPool, Row};
 use veyndo_app_storage::{RecordKey, Scope, jobs, progress, records};
@@ -295,5 +299,7 @@ async fn independent_postgres_contract() -> Result<(), Box<dyn std::error::Error
     println!(
         "PASS independent PostgreSQL: record scope/rollback, atomic job/outbox, concurrent replay, conflict, lease, cancel, quota, restart and scoped preview reset"
     );
+    mutation_cases::run(&pool).await?;
+    query_cases::run(&pool).await?;
     Ok(())
 }
