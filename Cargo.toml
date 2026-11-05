@@ -1,11 +1,12 @@
 [package]
 name = "veyndo-app-storage"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 license-file = "LICENSE"
 description = "Scoped PostgreSQL persistence extracted from Veyndo native app records and jobs"
 
 [dependencies]
+veyndo-app-model = { path = "model" }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 sha2 = "0.10"
 sqlx = { version = "0.9", default-features = false, features = ["postgres", "json"] }

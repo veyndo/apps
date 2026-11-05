@@ -17,6 +17,21 @@
         "src/apps/publication.rs"
       ],
       "boundary": "Record CAS/replay/write/outbox sequencing and parameter-bound pages; current model, identity, lifecycle and audit admission remain host ports."
+    },
+    {
+      "sourceCommit": "3880d9f677b781f4cbc1b69cd1c58fdb649249f8",
+      "sourceOwners": [
+        "src/apps/manifest.rs",
+        "src/apps/manifest_validation.rs",
+        "src/apps/core_extensions.rs",
+        "src/apps/editor_contract.rs",
+        "src/apps/field_values.rs",
+        "src/apps/input_schema.rs",
+        "src/apps/record_lifecycle.rs",
+        "src/apps/publication.rs",
+        "src/apps/native_data.rs"
+      ],
+      "boundary": "Pure model types/declarations/field/schema/language/workflow/publication; host policy ports retain native money, rich content and verified reference guards; ownership and identity remain host checks."
     }
   ]
 }
