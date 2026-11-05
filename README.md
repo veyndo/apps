@@ -44,6 +44,11 @@ also share subscription/privacy rules, projected filters, bounded delivery and
 schedule/webhook declarations. URL policy is required; actual delivery, signatures,
 current authority and queues remain host-owned.
 
+[Object bindings and graph contracts](model/README.md#native-object-bindings-and-graph-views)
+share product/customer/order/company declaration rules and selected-field graph
+projections. Actual object rights, scoped lists and verified release admission
+remain host responsibilities.
+
 ## What is shared with Veyndo
 
 - Fixed-table record get/put, bounded model scans, model definitions and precisely

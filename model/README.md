@@ -127,3 +127,34 @@ credentials or network. Its destination policy rejects every external URL.
 The model keeps its own lockfile for reproducible standalone builds. CI invokes
 its manifest directly, so model tests and lint run as the root package rather
 than relying on dependency lint behavior in the storage build.
+
+## Native object bindings and graph views
+
+`object_extensions::validate` checks app-owned model bindings to products,
+customers, orders and companies. A binding requires the original private unique
+reference anchor, declared list/data read and native object scopes on every
+list/save action. PII requirements retain the exact object-specific scope sets.
+Current actor permission checks, referenced-object ownership and the verified
+configuration-release predicate stay with the host.
+
+`intelligence::Contract` is the strict tool/entity metadata used by the native
+package. Its validator checks declared tools/models and existing budgets; it does
+not opt an action into MCP or admit an agent request. `ontology::Mapping` validates
+selected fields, namespaced types and declared reference edges. `ontology::project`
+derives a bounded graph view from already-authorized current rows with source
+app/version/record/revision and selected properties. Edges identify references;
+they do not resolve target records, grant reads or confirm product claims.
+
+A host must keep its full typed package compiler, current action/entity rights,
+tenant-scoped queries, field/language/reference validation, private/public release
+and projection admission connected. Supplying an app/tenant string is not proof
+of identity. The pure projector owns no database, graph store or inference client.
+
+```sh
+cargo run --locked --example object_graph
+```
+
+The independent example validates a product extension and prints its graph from
+synthetic admitted rows. A real host must obtain the input rows through its current
+permission-aware list. Unknown fields retain strict rejection; optional mappings
+keep legacy omission behavior.

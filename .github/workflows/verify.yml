@@ -29,4 +29,5 @@ jobs:
       - run: cargo test --locked --manifest-path model/Cargo.toml --tests
       - run: cargo run --locked --example upgrade_settings
       - run: cargo run --locked --example event_contracts
+      - run: cargo run --locked --example object_graph
       - run: cargo test --locked --test postgres -- --ignored --nocapture
