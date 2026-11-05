@@ -39,6 +39,11 @@ Settings declarations/updates, secret-safe projections and explicit schema evolu
 planning are also shared through [the pure model package](model/README.md#settings-and-explicit-model-upgrades).
 Encryption, current authority and actual transactional migrations stay with the host.
 
+The [pure model event contracts](model/README.md#events-schedules-and-incoming-webhooks)
+also share subscription/privacy rules, projected filters, bounded delivery and
+schedule/webhook declarations. URL policy is required; actual delivery, signatures,
+current authority and queues remain host-owned.
+
 ## What is shared with Veyndo
 
 - Fixed-table record get/put, bounded model scans, model definitions and precisely

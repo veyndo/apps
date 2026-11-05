@@ -28,8 +28,8 @@ The supported grammar is intentionally closed rather than a full JSON Schema eng
 Run from this repository root:
 
 ```sh
-cargo test --locked -p veyndo-app-model
-cargo clippy --workspace --locked --all-targets -- -D warnings
+cargo test --locked --manifest-path model/Cargo.toml
+cargo clippy --locked --manifest-path model/Cargo.toml --all-targets -- -D warnings
 ```
 
 The native host retains its existing HTTP/MCP/Flow routes and calls this package.
@@ -94,3 +94,36 @@ cargo run --locked --example upgrade_settings
 
 This example prepares a settings update and model plan. Applying it to stored data
 requires the host transaction and its current authority checks.
+
+## Events, schedules and incoming webhooks
+
+`events::Context` is a borrowed projection from the host's complete, currently
+admitted package. `subscriptions` checks declared event permissions, own-app record
+binding, B2B read rights and the original field minimization rules. Filters use
+that projected payload rather than raw events, so hidden customer fields cannot
+become delivery signals. Declaration permissions do not establish current actor
+rights; the host must still reauthorize the installed package before dispatch.
+
+`events::validate` requires a `DestinationPolicy` with no default acceptor.
+Veyndo supplies its existing HTTPS/public-address validator. External hosts must
+supply their own URL and destination admission, then independently enforce DNS
+resolution, pinned network access, signatures and current package authority at
+actual dispatch. This pure module never opens a socket or creates a delivery queue.
+
+`triggers::{AppSchedule, AppWebhook}` retains strict native wire shapes. UTC cron
+parsing permits one seconds value and at most eight schedules; validation accepts
+an explicit host clock and checks declared emit actions and their bounded inputs.
+Incoming webhook declarations require private emit actions. Actual HMAC checks,
+freshness, replay receipts, tenant binding, durable ticks, leases, private-environment
+restrictions and all transactional effects remain host responsibilities.
+
+```sh
+cargo run --locked --example event_contracts
+```
+
+The example evaluates a minimized event and a next UTC tick without Core, SQL,
+credentials or network. Its destination policy rejects every external URL.
+
+The model keeps its own lockfile for reproducible standalone builds. CI invokes
+its manifest directly, so model tests and lint run as the root package rather
+than relying on dependency lint behavior in the storage build.

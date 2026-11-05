@@ -68,6 +68,16 @@
         "src/apps/core_extensions.rs"
       ],
       "boundary": "Strict settings declarations, bounded value merge/secret-safe projections and pure schema evolution planning/conversion. Encryption, identity/consent, actual migrations and checked field/reference writes remain native transactional owners."
+    },
+    {
+      "sourceCommit": "e144e595b48807496fdcc978ece96eeb41074c21",
+      "sourceOwners": [
+        "src/apps/event_projection.rs",
+        "src/apps/event_contract.rs",
+        "src/apps/schedules.rs",
+        "src/apps/webhooks.rs"
+      ],
+      "boundary": "Strict event filters/delivery, declared subscription and privacy projections, UTC schedule parsing/validation and private webhook declarations. Mandatory destination host policy; native DNS/egress, current identity/consent, signatures, queues, SQL leases/replay and transactional ticks remain native."
     }
   ]
 }

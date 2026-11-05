@@ -1,6 +1,6 @@
 [package]
 name = "veyndo-app-model"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 license-file = "../LICENSE"
 description = "Pure app model contracts, bounded schema and field validation extracted from Veyndo"
@@ -9,3 +9,4 @@ description = "Pure app model contracts, bounded schema and field validation ext
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
+cron = "0.17"
