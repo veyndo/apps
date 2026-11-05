@@ -78,6 +78,16 @@
         "src/apps/webhooks.rs"
       ],
       "boundary": "Strict event filters/delivery, declared subscription and privacy projections, UTC schedule parsing/validation and private webhook declarations. Mandatory destination host policy; native DNS/egress, current identity/consent, signatures, queues, SQL leases/replay and transactional ticks remain native."
+    },
+    {
+      "sourceCommit": "4d37ed01befec3f3e4c7cab95d3611bae27955ba",
+      "sourceOwners": [
+        "src/apps/core_extensions.rs",
+        "src/apps/ontology.rs",
+        "src/apps/manifest.rs",
+        "src/apps/surfaces.rs"
+      ],
+      "boundary": "Strict native object extension declarations, AI tools/entities and graph mapping/projection from already-authorized rows; native current rights, immutable references, typed package admission, list/query scope and verified configuration release remain host owners."
     }
   ]
 }
