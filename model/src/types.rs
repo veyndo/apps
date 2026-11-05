@@ -113,3 +113,11 @@ pub struct Action {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mcp: Option<bool>,
 }
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Slot {
+    pub location: String,
+    pub component: String,
+    pub label: HashMap<String, String>,
+}

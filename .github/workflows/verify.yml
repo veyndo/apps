@@ -24,6 +24,5 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check && cargo clippy --workspace --locked --all-targets -- -D warnings
       - run: cargo clippy --locked -p veyndo-app-model --all-targets -- -D warnings
-      - run: cargo test --locked -p veyndo-app-model --lib
       - run: cargo test --locked -p veyndo-app-model --tests
       - run: cargo test --locked --test postgres -- --ignored --nocapture

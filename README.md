@@ -125,3 +125,12 @@ hooks, failure rollback, version isolation and preview behavior. Its companion
 concurrency test checks two competing installs at the 128-package quota and a
 package upgrade blocked by a writer. Test hooks demonstrate the port contract; a
 production host must supply its own real compiler, permission and commerce owners.
+
+## Shared package compiler
+
+Release 0.6.0 also exposes the independent model 0.3.0 package compiler. Its common
+metadata/model/action/slot/event grammar runs between mandatory host extension
+validators; reference, scope and Wasm-kind policies are required ports. Native
+Veyndo invokes this same compiler for its real Studio/API/MCP/release consumers.
+The complete typed manifest/domain compiler, identity and standalone service remain
+tracked extraction work. See `model/README.md` and its executable Rust tests.

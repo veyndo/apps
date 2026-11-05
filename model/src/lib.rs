@@ -5,12 +5,14 @@ mod error;
 pub mod fields;
 pub mod language;
 pub mod lifecycle;
+pub mod package;
+mod package_actions;
 pub mod publication;
 pub mod schema;
 mod schema_contract;
 mod types;
 pub use error::{Error, Kind};
-pub use types::{Action, Choice, Entity, Extension, Field, Object};
+pub use types::{Action, Choice, Entity, Extension, Field, Object, Slot};
 pub type Result<T> = std::result::Result<T, Error>;
 fn bad(message: impl Into<String>) -> Error {
     Error {
