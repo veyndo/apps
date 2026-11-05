@@ -158,3 +158,31 @@ The independent example validates a product extension and prints its graph from
 synthetic admitted rows. A real host must obtain the input rows through its current
 permission-aware list. Unknown fields retain strict rejection; optional mappings
 keep legacy omission behavior.
+
+## Placements and named HTTP routes
+
+`surfaces::{Surface, ApiRoute}` retains strict native wire types and legacy
+serialization. `surfaces::validate` checks placement locations/IDs/paths, declared
+private/public actions and slot permissions, route scope/method/name uniqueness
+and the original resource budgets. Native validation errors retain exact JSON
+pointers, including unavailable action and UI-path errors.
+
+A trusted host must implement `Policy` for existing native views, known team
+scopes and read-only effects. There are no default approvals. Veyndo delegates to
+its original view registry, current scope catalog and verified read predicate;
+a caller's `readOnly` flag cannot make save/emit/submit safe for GET. The complete
+native view/behavior compiler remains separately mandatory after this contract.
+
+Actual actor/context-bound expiring surface grants, current installed-package
+checks, pinned UI bytes/CSP, HTTP dispatch, action input/output admission and
+MCP opt-in remain host responsibilities. A placement or route declaration grants
+no data access and starts no service. Root `Contract` is only a projection from
+the complete typed package and does not replace its other compiler stages.
+
+```sh
+cargo run --locked --example surface_routes
+```
+
+The example uses explicitly registered view names/scopes and a conservative named
+read action. It validates declarations without serving a UI or implementing the
+full view compiler, identity or runtime. A real host must supply those owners.

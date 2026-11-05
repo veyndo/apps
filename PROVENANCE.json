@@ -88,6 +88,14 @@
         "src/apps/surfaces.rs"
       ],
       "boundary": "Strict native object extension declarations, AI tools/entities and graph mapping/projection from already-authorized rows; native current rights, immutable references, typed package admission, list/query scope and verified configuration release remain host owners."
+    },
+    {
+      "sourceCommit": "f779dae3823026495e97e66b86e2466957c8545d",
+      "sourceOwners": [
+        "src/apps/manifest.rs",
+        "src/apps/surfaces.rs"
+      ],
+      "boundary": "Strict Surface/ApiRoute wire types and placement/action/path/scope/method grammar through mandatory native-view, known-scope and read-only policy ports. Native verified effect predicate, complete view compiler, current actor/context/digest grants, pinned UI, routing and action gateway remain host owners."
     }
   ]
 }
