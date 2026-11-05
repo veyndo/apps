@@ -22,6 +22,23 @@ pub(crate) async fn invoke_app(
     observability::record(a, h, id, name, v, status, start.elapsed().as_millis()).await;
     result
 }
+// A job callback holds its admitted manifest/action through enqueue. Re-reading
+// the package must never turn a formerly declared job into a service invocation.
+pub(super) async fn invoke_job(
+    a: &App,
+    h: &RequestContext,
+    m: &Manifest,
+    name: &str,
+    v: &Value,
+) -> Result<Value> {
+    let action = m
+        .actions
+        .iter()
+        .find(|action| action.name == name && action.handler == "job")
+        .ok_or(bad("Callback requires a declared job action"))?;
+    action_admission::check(a, h, action, v)?;
+    tool_contract::checked_output(action, jobs::enqueue(a, h, m, action, v).await?)
+}
 async fn execute(a: &App, h: &RequestContext, id: &str, name: &str, v: &Value) -> Result<Value> {
     let t = tenant(h)?;
     let m = package(a, &t, id, true).await?;
@@ -30,27 +47,7 @@ async fn execute(a: &App, h: &RequestContext, id: &str, name: &str, v: &Value) -
         .iter()
         .find(|act| act.name == name)
         .ok_or(bad("Unknown app action"))?;
-    if !action.public {
-        merchant(a, h)?;
-    }
-    if !action.public
-        && (["save", "service", "emit", "job"].contains(&action.handler.as_str())
-            || action.permission.is_some())
-    {
-        auth::permit(
-            h,
-            action
-                .permission
-                .as_deref()
-                .unwrap_or(if action.handler == "job" {
-                    "apps.manage"
-                } else {
-                    "catalog"
-                }),
-        )?;
-    }
-    additional_permissions(h, action)?;
-    validate_input(&action.input_schema, v)?;
+    action_admission::check(a, h, action, v)?;
     if let Some(result) = super::hosted::action(a, &t, id, name).await? {
         return tool_contract::checked_output(action, result);
     }

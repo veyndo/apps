@@ -21,6 +21,7 @@ pub(crate) use configuration_selection::{
     Selection as ConfigurationSelection, resolve_selection as configuration_selection_for_list,
     resolve_selections, selection_shape,
 };
+mod action_admission;
 mod consent;
 mod core_callbacks;
 pub(crate) mod core_extensions;

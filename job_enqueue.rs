@@ -13,13 +13,6 @@ pub(super) async fn execute(a: &App, h: &RequestContext, m: &Manifest, v: &Value
     }
     credentials::permit(h, "jobs.write")?;
     let name = v["action"].as_str().unwrap();
-    if !m
-        .actions
-        .iter()
-        .any(|action| action.name == name && action.handler == "job")
-    {
-        return Err(bad("Callback requires a declared job action"));
-    }
     let key = v["requestKey"].as_str().unwrap();
     if key.is_empty() || key.chars().any(char::is_control) {
         return Err(bad(
@@ -33,5 +26,5 @@ pub(super) async fn execute(a: &App, h: &RequestContext, m: &Manifest, v: &Value
     );
     // Preserve the authenticated principal. The gateway rechecks every action right,
     // schema, live-only admission and current package before creating the native job.
-    invoke_app(a, &context, &m.id, name, &v["input"]).await
+    gateway::invoke_job(a, &context, m, name, &v["input"]).await
 }
