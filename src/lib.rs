@@ -1,6 +1,7 @@
 //! Scoped storage ports for trusted hosts; no identity resolution, pool creation, service dispatch or schema installation.
 pub use veyndo_app_model as model;
 mod error;
+pub mod installation;
 pub mod jobs;
 pub mod mutations;
 pub mod packages;

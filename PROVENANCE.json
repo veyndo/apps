@@ -44,6 +44,13 @@
         "src/apps/approval.rs"
       ],
       "boundary": "Shared action and callback-scope rules through required current-authority ports; canonical package digest and original scoped active-package lock. Authentication, verified consent predicate, reserved package trust and full typed digest comparison stay with native host."
+    },
+    {
+      "sourceCommit": "a02e4ec2adf7d3917edd9e8d96a35137a42c26ee",
+      "sourceOwners": [
+        "src/apps/registry.rs"
+      ],
+      "boundary": "Original atomic installation lock/quota/version/package/event sequencing with mandatory compiler/commerce/dependency/migration/model/default/schedule host hooks on the original transaction. Native authentication, consent and package trust remain host authority."
     }
   ]
 }

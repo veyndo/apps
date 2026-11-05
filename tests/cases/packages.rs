@@ -3,7 +3,6 @@ use serde_json::json;
 use sqlx::PgPool;
 use veyndo_app_storage::{Scope, packages};
 pub async fn run(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
-    sqlx::query("CREATE TABLE app_packages(tenant text NOT NULL,id text NOT NULL,active boolean NOT NULL,manifest jsonb NOT NULL,PRIMARY KEY(tenant,id))").execute(pool).await?;
     let own = Scope {
         tenant: "package-own",
         app: "plugin",
@@ -20,7 +19,7 @@ pub async fn run(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
     );
     assert_ne!(packages::digest(&v1), packages::digest(&v2));
     for scope in [own, foreign] {
-        sqlx::query("INSERT INTO app_packages VALUES($1,$2,true,$3)")
+        sqlx::query("INSERT INTO app_packages(tenant,id,active,manifest) VALUES($1,$2,true,$3)")
             .bind(scope.tenant)
             .bind(scope.app)
             .bind(&v1)
