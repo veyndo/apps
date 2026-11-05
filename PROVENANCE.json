@@ -1,0 +1,12 @@
+{
+  "sourceRepository": "https://github.com/veyndo/veyndo",
+  "sourceCommit": "513721666e2d5118771611ee227e3618dc957e41",
+  "sourceDirectory": "src/apps",
+  "extractedHistoryCommit": "bc792d31bc81ac97561ebe3d0773da8885e1ea53",
+  "extractedOwners": [
+    "records.rs",
+    "jobs.rs",
+    "job_callbacks.rs"
+  ],
+  "method": "git subtree split; storage SQL moved behind explicit connection/scope ports; native authorization remains with the host"
+}

@@ -1,0 +1,26 @@
+name: App persistence
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  storage:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: storage_fixture
+          POSTGRES_PASSWORD: synthetic-fixture-only
+          POSTGRES_DB: app_storage_test
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_STORAGE_TEST_DATABASE_URL: postgres://storage_fixture:synthetic-fixture-only@127.0.0.1:5432/app_storage_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --check && cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked --test postgres -- --ignored --nocapture

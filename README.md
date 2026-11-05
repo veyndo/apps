@@ -1,53 +1,70 @@
-# src/apps
+# Veyndo Apps: persistence foundation
 
-This folder owns the Rust modules listed below. Each source begins with its responsibility contract. The crate currently shares internal types/imports through a facade; APIs, MCP and UCP delegate to shared domain operations.
+The native Veyndo app record and job storage now has an independent Rust package.
+`veyndo-app-storage` accepts an existing PostgreSQL connection and explicit
+`Scope`/`RecordKey` values. It has no dependency on the Veyndo application, app
+runtime, identity tables, inference, provider clients or environment configuration.
 
-- [`cart_contributions.rs`](cart_contributions.rs): Generic app contributions: configure a cart, bind package/data revisions and persist audited pricing inputs.
-- [`compatibility.rs`](compatibility.rs): Explicit read adapter for persisted v0.5 engraving carts; completed order snapshots remain unchanged.
-- [`data.rs`](data.rs): Shared app records: typed writes, optimistic revisions, bounded reads and local RLS context.
-- [`editor_contract.rs`](editor_contract.rs): Editor mounts, enumerated fields and tenant-owned core references; no app alters core tables.
-- [`editor_tests.rs`](editor_tests.rs): Assistant fixture contracts exercise real validation, not only the client-side builder.
-- [`events.rs`](events.rs): Durable at-least-once app events, retry leases and stable event idempotency keys.
-- [`evidence.rs`](evidence.rs): Private provenance-bearing app exports feed merchant retrieval and durable app events; never public PDP answers.
-- [`evidence_routes.rs`](evidence_routes.rs): Scoped merchant-only evidence retrieval; sources never enter public product answers.
-- [`gateway.rs`](gateway.rs): One permission-aware action gateway serves HTTP, UI and MCP; service egress is operator configured.
-- [`service_policy.rs`](service_policy.rs): Exact operator-owned transport admission; the extracted predicate rejects unsafe URLs and unapproved HTTP origins.
-- [`manifest.rs`](manifest.rs): Strict package contract; identifiers and limits are checked before model registration.
-- [`manifest_validation.rs`](manifest_validation.rs): Package capability, schema and action validation; no executable behavior is inferred from names.
-- [`mod.rs`](mod.rs): Versioned app packages: managed data, UI slots, agent tools and isolated service calls.
-- [`native_data.rs`](native_data.rs): App record translations use configured shop languages and field-level main-language inheritance.
-- [`native_view_tests.rs`](native_view_tests.rs): Native schema security regressions: bindings, public writes, allowlists, bounded blocks and legacy digests.
-- [`native_views.rs`](native_views.rs): Bounded native view definitions; every data binding resolves to the same authorized app action gateway.
-- [`planning.rs`](planning.rs): Registered managed app actions join the same preview/approve transaction as core changes.
-- [`presentation.rs`](presentation.rs): Optional passive app artwork and localized summaries; omitted metadata preserves published legacy digests.
-- [`registry.rs`](registry.rs): Atomic installation and additive schema upgrades; immutable version digests preserve history.
-- [`records.rs`](records.rs): One fixed shared store with tenant/app/model identity, field projection, typed model registration and scoped preview resets; no per-installation DDL.
-- [`routes.rs`](routes.rs): Tenant-scoped package lifecycle, generated data endpoints and a shared action adapter.
-- [`runtime.rs`](runtime.rs): Generic pure-Wasm contribution executor; the installed package supplies all business predicates.
-- [`schedules.rs`](schedules.rs): Durable UTC cron ticks emit namespaced outbox events; replicas lock due rows and staging never runs them.
-- [`service_limits.rs`](service_limits.rs): Non-queuing per-process bulkheads isolate slow apps without holding database connections.
-- [`surface_tests.rs`](surface_tests.rs): Contract counterexamples reject cross-scope UI actions, unsafe URLs and mutating GET routes.
-- [`surfaces.rs`](surfaces.rs): App-owned UI surfaces and namespaced HTTP routes reuse the authorized action gateway.
-- [`webhooks.rs`](webhooks.rs): Operator-signed incoming events: tenant-bound HMAC, five-minute freshness and atomic replay receipts.
+This is the first storage extraction inside the broader Apps component. The full
+standalone app host, permission adapter, model compiler, API/MCP service and storage
+cutover remain on the [component task list](https://github.com/veyndo/veyndo/blob/main/docs/commerce-components.md).
+The library is a trusted host port, not a browser API or an authentication boundary.
 
-The [source inventory](../../docs/module-inventory.md) is checked in CI. [The behavioral map](../../docs/source-map.md) identifies integration suites, and [testing](../../docs/testing.md) describes actual coverage and limits. Every file is limited to 320 lines; `main.rs` to 120.
+## What is shared with Veyndo
 
-- `editor_contract.rs`, `editor_tests.rs`: owned core references, context/choice/privacy validation and direct-route scope checks.
-- `schedules.rs`: transactional UTC emit ticks, persistent clock receipts and private-stage exclusion.
-- `webhooks.rs`: exact-byte HMAC verification, typed ingress and durable replay receipts.
-- `native_views.rs`, `native_data.rs`, `native_view_tests.rs`: bounded native binding contracts, action handlers and validation cases.
-- `presentation.rs`: declared artwork and local category fallbacks.
+- Fixed-table record get/put, bounded model scans, model definitions and precisely
+  scoped preview cleanup. The native caller retains field/reference validation,
+  CAS, language inheritance, history, quotas, signed RLS and publication rules.
+- Durable app job enqueue with the original tenant-wide serialization, request
+  fingerprint, package/action binding, quotas and one atomic job/outbox handoff.
+- Scoped job reads, single-winner claim and lease-fenced progress persistence.
+  Unknown or expired jobs are never automatically reclaimed by this library.
+- Existing transactions remain with the caller. A rejection rolls back record,
+  history, projection and event changes together in the native host.
 
-[Guided app contracts](../../docs/app-assistants.md).
+Veyndo consumes an exact source snapshot from this repository. Source history was
+extracted from `src/apps`; [provenance](PROVENANCE.json) records the original commit.
+The original [license](LICENSE) is retained. There is no alternate order ledger,
+pricing engine or queue implementation.
 
-- `settings.rs`: bounded, localized package setting declarations and live personal-administrator configuration. Values reuse `secrets.rs` authenticated encryption, digest/CAS fence and metadata outbox. Secret values have no browser GET path; private approved service actions receive `_appSettings` server-side. No public settings exposure, sandbox credential copy or credential rollback.
-- Installation admission now limits new package IDs to 128 per tenant and declared indexes to 64 per package. Existing-package updates remain possible at the package-count limit; tenant/app rows and byte quotas continue unchanged. These caps are not a production-scale benchmark.
+## Use in a trusted Rust host
 
-- `input_schema.rs`, `input_schema_tests.rs`: bounded input/output schemas, nullable unions and escaped field pointers. This is an explicit subset, not a general JSON Schema engine.
-- `tool_contract.rs`: current authorized app discovery through the shared native tool description and optional result validation. Result-contract failures do not undo an already performed effect and are not automatically retried.
+Add a Git dependency pinned to the reviewed release commit, then use the existing
+transaction. The host authenticates the actor and admits the exact package first.
 
-- `business_capability/`: canonical localized merchant intent and bounded synthetic
-  decision cases. Existing WIT isolation executes them before build/installation;
-  no new executor, live-data reader, approval ledger or pricing implementation.
+```rust,ignore
+use veyndo_app_storage::{RecordKey, Scope, records};
+let scope = Scope { tenant: admitted_tenant, app: admitted_app };
+let key = RecordKey { scope, entity: "offers", id: admitted_id };
+let mut tx = pool.begin().await?;
+let current = records::get(&mut tx, key, true).await?;
+// Validate current revision, fields, references and rights in the admitted host.
+records::put(&mut tx, key, next_revision, &validated_fields).await?;
+// Write history/projections/events in this same transaction before committing.
+tx.commit().await?;
+```
 
-- [upgrade_review.rs](upgrade_review.rs): Rollback-only actual installation admission and minimized migration metadata.
+Never construct admission from a request's tenant field alone or hand a database
+connection to a plugin, agent or untrusted client. `Scope` is a storage key, not
+proof of authorization. The package does not open pools, install schemas, acquire
+administrator rights, change RLS, execute services or automatically commit.
+
+## Verify without Veyndo
+
+```sh
+cargo fmt --check
+cargo clippy --locked --all-targets -- -D warnings
+APP_STORAGE_TEST_DATABASE_URL=postgres://.../disposable_storage_test \
+  cargo test --locked --test postgres -- --ignored --nocapture
+```
+
+The PostgreSQL contract test requires an explicitly selected empty disposable
+database and installs `tests/schema.sql` there. This minimum test schema contains
+no Veyndo identity or commerce tables. It verifies composite record scope,
+transaction rollback, atomic job/outbox handoff, concurrent idempotency, changed
+request rejection, claims, progress/cancellation fences, quotas, connection restart
+and scoped preview cleanup. CI runs it against actual PostgreSQL 17.
+
+The minimum test schema is not a production app schema or replacement for the
+native signed RLS, references, model validation and storage accounting. Native
+integration tests remain required when composing a new component version.

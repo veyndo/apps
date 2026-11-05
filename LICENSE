@@ -1,0 +1,113 @@
+Veyndo Sustainable Use License
+Version 1.0
+
+Copyright (c) 2026 Stefan Hamann and contributors
+
+This license is based on the n8n Sustainable Use License 1.0, with modified
+limitations and definitions for commerce. It is not the unmodified n8n license
+and is not an OSI-approved open-source license.
+
+Third-party components retain their original licenses and notices. This license
+does not replace those terms or revoke rights in copies previously obtained
+under MIT or another license. See THIRD_PARTY.md and docs/licensing.md.
+
+Acceptance
+
+By using the software, you agree to the terms and conditions below.
+
+Copyright License
+
+The licensor grants you a non-exclusive, royalty-free, worldwide,
+non-sublicensable, non-transferable license to use, copy, distribute, make
+available, and prepare derivative works of the software, in each case subject
+to the limitations below.
+
+Limitations
+
+1. You may use or modify the software for your own internal business purposes,
+   including operating storefronts for your company, or for non-commercial,
+   research, educational, or personal use. Your company may sell its own or
+   resold goods, services, and digital products to customers through these
+   storefronts. Customer-facing product pages, accounts, agent interactions,
+   APIs, and checkout are permitted as part of that own-business use.
+
+2. Without a separate written commercial license from the applicable rights
+   holders, you must not use the software or derivative works to offer third
+   parties a commercial ecommerce platform, shop builder, commerce backend,
+   managed shop-hosting service, or software-as-a-service. This includes
+   providing independent merchants with shops, administration, commerce APIs,
+   or agent-accessible commerce services operated on their behalf; reselling,
+   white-labeling, or commercially embedding the software in such an offering;
+   and selling or licensing copies of the software or derivative works as a
+   competing shop system. The restriction applies whether charges are direct,
+   bundled with other services, or indirect, and whether the software is
+   modified, rebranded, single-tenant, or multi-tenant.
+
+3. You may distribute copies or modifications free of charge, provided that
+   recipients receive this license and their use remains subject to it. You
+   may charge for consulting, development, installation, or maintenance of a
+   customer's own-business installation, provided that this is not a sale or
+   license of the software and does not provide the prohibited hosted or
+   managed commerce offering described above. Purchasing ordinary computing
+   infrastructure to operate your own storefronts is permitted.
+
+4. You may not alter, remove, or obscure licensing, copyright, or other notices
+   of the licensor. Use of the licensor's trademarks is subject to applicable
+   law. A fork or modification must not imply endorsement by Veyndo.
+
+Patents
+
+The licensor grants you a license, under any patent claims the licensor can
+license or becomes able to license, to make, have made, use, sell, offer for
+sale, import, and have imported the software, subject to this license's
+limitations and conditions. This does not cover patent claims you cause to
+be infringed by modifications or additions. If you or your company makes a
+written claim that the software infringes or contributes to infringement of
+any patent, your patent license under these terms ends immediately. A claim
+by your company also ends your patent license for work on its behalf.
+
+Notices
+
+Anyone receiving a copy of any part of the software from you must also receive
+these terms. Modified copies must prominently state that you modified the
+software. Preserve applicable third-party notices.
+
+No Other Rights
+
+These terms do not imply any rights other than those expressly granted. A
+commercial exception requires a separate written agreement; public source
+availability, a fork, a pull request, or an unanswered request grants none.
+
+Termination
+
+Use in violation of these terms is unlicensed and automatically terminates
+your license. If the licensor notifies you of a violation and you cease all
+violations within 30 days after receiving that notice, your license is
+reinstated retroactively. Any violation after that reinstatement automatically
+and permanently terminates your license.
+
+No Liability
+
+As far as the law allows, the software comes as is, without any warranty or
+condition. The licensor is not liable for damages arising from these terms or
+the use or nature of the software under any kind of legal claim.
+
+Definitions
+
+"Licensor" means the rights holder offering the software under these terms.
+"Software" means the software made available under these terms, including
+any portion of it and modifications or derivative works, excluding third-party
+components governed solely by their own licenses.
+"You" means the individual or entity accepting these terms.
+"Your company" means the legal entity, sole proprietorship, or organization
+you work for and entities under its common control. Control means ownership
+of substantially all assets or power to direct management and policies by
+vote, contract, or otherwise, directly or indirectly. Unrelated merchants,
+clients, and platform tenants are not your company merely because they use
+your services.
+"Storefront" means a sales experience through which your company sells goods,
+services, or digital products, rather than a shop platform offered to other
+merchants.
+"Commercial" includes activities intended for monetary compensation or other
+commercial advantage. "Your license" means the license granted by these terms.
+"Trademark" includes trademarks, service marks, and similar rights.
