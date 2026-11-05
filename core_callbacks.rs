@@ -39,6 +39,9 @@ async fn execute(
     v: Value,
 ) -> Result<Value> {
     let t = merchant(a, h)?;
+    if header(h, "x-veyndo-host-version").is_some_and(|version| version != "1") {
+        return Err(bad("Unsupported host exchange contract version"));
+    }
     if h.principal.app.as_deref().is_some_and(|s| s != id) {
         return Err(Error(
             StatusCode::FORBIDDEN,
@@ -62,6 +65,9 @@ async fn execute(
         )?;
         credentials::permit(h, "assets.read")?;
         return assets::app_file_callback(a, h, operation, &v).await;
+    }
+    if operation == "job_enqueue" {
+        return job_enqueue::execute(a, h, &m, &v).await;
     }
     if operation == "job_evidence" {
         return job_evidence::verify(a, h, &m, &v).await;

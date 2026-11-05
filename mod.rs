@@ -63,6 +63,7 @@ mod tool_contract;
 pub(crate) use tool_contract::app_tools;
 mod input_schema;
 mod job_callbacks;
+mod job_enqueue;
 mod job_evidence;
 mod job_import;
 mod jobs;
