@@ -103,3 +103,25 @@ CI runs it against actual PostgreSQL 17.
 The minimum test schema is not a production app schema or replacement for the
 native signed RLS, references, model validation and storage accounting. Native
 integration tests remain required when composing a new component version.
+
+## Atomic installation in the host transaction
+
+`installation::install` takes the caller's `sqlx::Transaction`, admitted package
+metadata and mandatory `InstallHooks`. Hook stages preserve the original order:
+prepare compiler/commerce checks; acquire tenant/package locks and quota; admit
+dependencies; check immutable versions and run the host migration; persist package
+and attach models; record immutable version and event; seed configuration/schedules.
+The returned digest comes from the same canonical JSON as package write fences.
+
+Implement every hook from the host's real policy owners. In particular, `upgrade`
+must parse/check the old contract, reject unsupported downgrades and migrate data.
+`versions: false` is solely for a host-authorized private mutable preview; admission
+must never accept that choice from untrusted request fields. The component does
+not authenticate a request, validate the full package, approve a provider, create
+a production schema or commit the transaction. Roll back on every error.
+
+The actual PostgreSQL example in `tests/cases/installation.rs` exercises all five
+hooks, failure rollback, version isolation and preview behavior. Its companion
+concurrency test checks two competing installs at the 128-package quota and a
+package upgrade blocked by a writer. Test hooks demonstrate the port contract; a
+production host must supply its own real compiler, permission and commerce owners.
