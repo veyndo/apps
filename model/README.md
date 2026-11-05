@@ -67,3 +67,30 @@ without Veyndo, SQL, network or Wasm execution. The twelve added tests include
 required extension denial/order, package budgets, schema closure, append-only
 forms, private/public reads, jobs, payment actions, assets and configuration/Flow
 restrictions. `Slot` retains the native strict wire type and published digests.
+
+## Settings and explicit model upgrades
+
+`settings::Setting` retains the strict native wire shape and localized labels.
+`settings::prepare` applies a bounded partial update after the host admits the
+current actor, package digest and revision. Required values, exact integer/boolean
+values, string/control limits and the total encoded size are enforced. Pass its
+encoded result only to the encrypted store. `visible` omits secrets, `configured`
+returns only declared key names and `declared` drops removed settings before
+runtime dispatch. These helpers cannot grant access or encrypt values themselves.
+
+`evolution::{Migration, Step}` retains explicit rename/remove/convert/fill steps,
+reserved-field and path budgets. `shape` plans changes to existing entity contracts;
+operational-to-configuration changes, extension rebinding, relationships and model
+removal retain the native offline-migration requirements. `convert` uses exact
+integer/string conversions. The host still validates the complete package and
+migration path, takes locks and recovery snapshots, validates every converted field
+and reference, and rolls back every record/package/event write on failure.
+
+Run an actual independent example with no credentials or database:
+
+```sh
+cargo run --locked --example upgrade_settings
+```
+
+This example prepares a settings update and model plan. Applying it to stored data
+requires the host transaction and its current authority checks.
