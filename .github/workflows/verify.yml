@@ -18,12 +18,15 @@ jobs:
       APP_STORAGE_TEST_DATABASE_URL: postgres://storage_fixture:synthetic-fixture-only@127.0.0.1:5432/app_storage_test
     steps:
       - uses: actions/checkout@v4
+      - name: Reject tracked build artifacts
+        run: python3 -c "import subprocess; from pathlib import PurePosixPath; paths=subprocess.check_output(['git','ls-files','-z']).decode().split('\0'); assert not any('target' in PurePosixPath(p).parts for p in paths), 'Tracked Rust build artifacts'"
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check && cargo clippy --workspace --locked --all-targets -- -D warnings
-      - run: cargo clippy --locked -p veyndo-app-model --all-targets -- -D warnings
-      - run: cargo test --locked -p veyndo-app-model --tests
+      - run: cargo clippy --locked --manifest-path model/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --locked --manifest-path model/Cargo.toml --tests
       - run: cargo run --locked --example upgrade_settings
+      - run: cargo run --locked --example event_contracts
       - run: cargo test --locked --test postgres -- --ignored --nocapture
