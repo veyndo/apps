@@ -1,0 +1,173 @@
+{
+  "entities": [
+    {
+      "name": "guides",
+      "label": {
+        "en": "Care instructions",
+        "de": "Pflegehinweise",
+        "fr": "Instructions d\u2019entretien",
+        "es": "Instrucciones de cuidado"
+      },
+      "publicRead": true,
+      "fields": [
+        {
+          "name": "title",
+          "label": {
+            "en": "Title",
+            "de": "Titel",
+            "fr": "Titre",
+            "es": "T\u00edtulo"
+          },
+          "kind": "string",
+          "translatable": true,
+          "required": true,
+          "indexed": false
+        },
+        {
+          "name": "instructions",
+          "label": {
+            "en": "Care instructions",
+            "de": "Pflegehinweise",
+            "fr": "Instructions d\u2019entretien",
+            "es": "Instrucciones de cuidado"
+          },
+          "kind": "string",
+          "translatable": true,
+          "required": false,
+          "indexed": false
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "name": "list_guides",
+      "description": "List care guides",
+      "handler": "list",
+      "entity": "guides",
+      "public": true,
+      "readOnly": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "after": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "save_guides",
+      "description": "Save care guide",
+      "handler": "save",
+      "entity": "guides",
+      "public": false,
+      "flowAllowed": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "fields": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "fields"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "workspace",
+      "location": "admin.navigation",
+      "label": {
+        "en": "Care Studio",
+        "de": "Pflege-Studio",
+        "fr": "Studio entretien",
+        "es": "Estudio de cuidado"
+      },
+      "uiPath": "native/workspace",
+      "actions": [
+        "list_guides",
+        "save_guides"
+      ]
+    },
+    {
+      "id": "care",
+      "location": "product.detail",
+      "label": {
+        "en": "Care instructions",
+        "de": "Pflegehinweise",
+        "fr": "Instructions d\u2019entretien",
+        "es": "Instrucciones de cuidado"
+      },
+      "uiPath": "native/care",
+      "actions": [
+        "list_guides"
+      ]
+    }
+  ],
+  "views": [
+    {
+      "id": "workspace",
+      "layout": "stack",
+      "blocks": [
+        {
+          "id": "records",
+          "kind": "table",
+          "title": {
+            "en": "Care instructions",
+            "de": "Pflegehinweise",
+            "fr": "Instructions d\u2019entretien",
+            "es": "Instrucciones de cuidado"
+          },
+          "entity": "guides",
+          "readAction": "list_guides"
+        },
+        {
+          "id": "editor",
+          "kind": "form",
+          "title": {
+            "en": "Care instructions",
+            "de": "Pflegehinweise",
+            "fr": "Instructions d\u2019entretien",
+            "es": "Instrucciones de cuidado"
+          },
+          "entity": "guides",
+          "readAction": "list_guides",
+          "writeAction": "save_guides"
+        }
+      ]
+    },
+    {
+      "id": "care",
+      "layout": "grid",
+      "blocks": [
+        {
+          "id": "guides",
+          "kind": "cards",
+          "title": {
+            "en": "Care instructions",
+            "de": "Pflegehinweise",
+            "fr": "Instructions d\u2019entretien",
+            "es": "Instrucciones de cuidado"
+          },
+          "entity": "guides",
+          "readAction": "list_guides"
+        }
+      ]
+    }
+  ]
+}
