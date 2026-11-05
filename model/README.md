@@ -186,3 +186,32 @@ cargo run --locked --example surface_routes
 The example uses explicitly registered view names/scopes and a conservative named
 read action. It validates declarations without serving a UI or implementing the
 full view compiler, identity or runtime. A real host must supply those owners.
+
+
+## Native views and UI behavior
+
+`views::Contract` borrows entities, actions, surfaces and native views from the
+complete typed package. `views::validate` checks exact localized view/control
+wire types, twelve-column geometry, editor context bindings, action/model
+bindings, container ownership and bounded click/change behavior. UI statements
+support typed assignment, comparisons, action calls, messages, navigation,
+refresh and form validation. Unknown properties and prototype/path object keys
+are rejected. Action-binding errors preserve their exact JSON pointers.
+
+The required `views::Policy: fields::ValuePolicy` supplies the host's actual field
+value policies and public-read decision. Veyndo uses its existing currency,
+rich-content, relation and language owners and the original verified public-read
+predicate. There are no default approvals. A standalone host must implement these
+ports from its own canonical owners; accepting a declaration never creates a user
+identity, runtime grant or permission to execute its actions.
+
+`views::payload` projects the selected view, bound entity definitions, allowlisted
+lookup/asset actions and navigation within the same public/admin class. Call it
+only after current host authorization. It neither reads records nor renders or
+executes behavior. The existing native renderer, interpreter and action gateway
+consume the same wire model after their normal admission checks.
+
+Run `cargo run --locked --example native_views` from the repository root for a
+localized form and its validate/save behavior, without a Core binary or database.
+Independent compiler cases are in `model/tests/native_views.rs`; the original
+care-studio contract fixture is retained with extraction provenance.

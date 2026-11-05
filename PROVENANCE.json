@@ -96,6 +96,17 @@
         "src/apps/surfaces.rs"
       ],
       "boundary": "Strict Surface/ApiRoute wire types and placement/action/path/scope/method grammar through mandatory native-view, known-scope and read-only policy ports. Native verified effect predicate, complete view compiler, current actor/context/digest grants, pinned UI, routing and action gateway remain host owners."
+    },
+    {
+      "sourceCommit": "65d32d3dd18297cbd26fb7a6239aa233948bcfda",
+      "sourceOwners": [
+        "src/apps/native_views.rs",
+        "src/apps/form_layout.rs",
+        "src/apps/ui_logic.rs",
+        "src/apps/ui_logic_types.rs",
+        "src/apps/editor_contract.rs"
+      ],
+      "boundary": "Strict native views, geometry, context bindings, UI AST/type/allowlist budgets and scoped payload projection; mandatory native currency/content/value and verified public-read policies. Actual identity, grants, execution, references, publication and current rights remain host owners."
     }
   ]
 }

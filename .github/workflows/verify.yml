@@ -31,4 +31,5 @@ jobs:
       - run: cargo run --locked --example event_contracts
       - run: cargo run --locked --example object_graph
       - run: cargo run --locked --example surface_routes
+      - run: cargo run --locked --example native_views
       - run: cargo test --locked --test postgres -- --ignored --nocapture
