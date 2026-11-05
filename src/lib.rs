@@ -3,6 +3,7 @@ pub use veyndo_app_model as model;
 mod error;
 pub mod jobs;
 pub mod mutations;
+pub mod packages;
 pub mod progress;
 pub mod queries;
 pub mod records;

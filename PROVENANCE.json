@@ -32,6 +32,18 @@
         "src/apps/native_data.rs"
       ],
       "boundary": "Pure model types/declarations/field/schema/language/workflow/publication; host policy ports retain native money, rich content and verified reference guards; ownership and identity remain host checks."
+    },
+    {
+      "sourceCommit": "284450012b0ec0baa3f7e3338691dc2b93867a08",
+      "sourceOwners": [
+        "src/apps/manifest.rs",
+        "src/apps/action_admission.rs",
+        "src/apps/gateway.rs",
+        "src/apps/credentials.rs",
+        "src/apps/package_fence.rs",
+        "src/apps/approval.rs"
+      ],
+      "boundary": "Shared action and callback-scope rules through required current-authority ports; canonical package digest and original scoped active-package lock. Authentication, verified consent predicate, reserved package trust and full typed digest comparison stay with native host."
     }
   ]
 }

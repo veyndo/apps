@@ -20,6 +20,21 @@ checks enter through explicit required ports. Veyndo implements those ports with
 its existing owners; callers cannot select a permissive policy through HTTP/MCP.
 Model checks do not authenticate users or resolve ownership of referenced objects.
 
+## Host authority ports
+
+The model admission module shares private-merchant checks, primary/additional
+rights, callback capability mappings and callback-key scope planning. A trusted
+host implements `Authority`/`ScopeAuthority` from its current authenticated
+principal. Request-body roles, tenant IDs and permission arrays never create
+that authority. Callback consent facts remain separate from current role facts;
+Veyndo applies its existing verified callback predicate to both.
+
+The storage package also owns the original active-package shared lock/read and
+canonical JSON fingerprint. The host still validates the full installed package,
+checks its expected digest, authorizes reserved/provider packages and owns install,
+upgrade, revocation, secret storage and commit. This is not a token issuer or a
+standalone authentication service.
+
 ## What is shared with Veyndo
 
 - Fixed-table record get/put, bounded model scans, model definitions and precisely

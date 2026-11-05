@@ -1,6 +1,8 @@
 //! Actual independent PostgreSQL persistence: composite scope, atomic handoff, replay, quota, restart and lease fences.
 #[path = "cases/mutations.rs"]
 mod mutation_cases;
+#[path = "cases/packages.rs"]
+mod package_cases;
 #[path = "cases/queries.rs"]
 mod query_cases;
 use serde_json::json;
@@ -301,5 +303,6 @@ async fn independent_postgres_contract() -> Result<(), Box<dyn std::error::Error
     );
     mutation_cases::run(&pool).await?;
     query_cases::run(&pool).await?;
+    package_cases::run(&pool).await?;
     Ok(())
 }
