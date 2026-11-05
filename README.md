@@ -1,4 +1,4 @@
-# Veyndo Apps: persistence foundation
+# Veyndo Apps: model and persistence foundations
 
 The native Veyndo app record and job storage now has an independent Rust package.
 `veyndo-app-storage` accepts an existing PostgreSQL connection and explicit
@@ -6,9 +6,19 @@ The native Veyndo app record and job storage now has an independent Rust package
 runtime, identity tables, inference, provider clients or environment configuration.
 
 This is the first storage extraction inside the broader Apps component. The full
-standalone app host, permission adapter, model compiler, API/MCP service and storage
+standalone app host, permission adapter, complete package compiler, API/MCP service and storage
 cutover remain on the [component task list](https://github.com/veyndo/veyndo/blob/main/docs/commerce-components.md).
 The library is a trusted host port, not a browser API or an authentication boundary.
+
+## Pure model package
+
+[`veyndo-app-model`](model/) has no SQL or network dependency. It exports the exact
+entity/field/extension wire types, declaration grammar, bounded action schemas,
+field value checks, enabled-language rules, publication contracts and record
+workflows. Native currency, rich-content, relation-shape and core-reference policy
+checks enter through explicit required ports. Veyndo implements those ports with
+its existing owners; callers cannot select a permissive policy through HTTP/MCP.
+Model checks do not authenticate users or resolve ownership of referenced objects.
 
 ## What is shared with Veyndo
 

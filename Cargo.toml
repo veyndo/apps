@@ -1,6 +1,10 @@
+[workspace]
+resolver = "3"
+members = ["model"]
+
 [package]
 name = "veyndo-app-storage"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 license-file = "LICENSE"
 description = "Scoped PostgreSQL persistence extracted from Veyndo native app records and jobs"

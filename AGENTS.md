@@ -7,8 +7,9 @@ open an environment-configured pool or introduce provider/network dispatch.
 
 Preserve tenant/app/entity keys, caller transactions, job request fingerprints,
 package/action binding, quotas, atomic outbox, lease fences and uncertainty.
-No per-app/model SQL objects and no second commerce ledger. Native field rules,
-signed RLS, current authority, history and publication stay with their host owners.
+No per-app/model SQL objects and no second commerce ledger. Pure model rules live in model/ and are used by the native adapter. Signed RLS,
+current authority, reference ownership, currency/rich-content policies, history
+and publication authority stay with their host owners.
 
 Run formatting, lint and the ignored real PostgreSQL contract test explicitly.
 Each Rust module starts with its responsibility and stays below 320 lines.
