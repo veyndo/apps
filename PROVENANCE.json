@@ -51,6 +51,14 @@
         "src/apps/registry.rs"
       ],
       "boundary": "Original atomic installation lock/quota/version/package/event sequencing with mandatory compiler/commerce/dependency/migration/model/default/schedule host hooks on the original transaction. Native authentication, consent and package trust remain host authority."
+    },
+    {
+      "sourceCommit": "d652018db7c645c2b358762fb59c3c0f0c44f3f4",
+      "sourceOwners": [
+        "src/apps/manifest_validation.rs",
+        "src/apps/manifest.rs"
+      ],
+      "boundary": "Shared package envelope/model/action/slot/event grammar and required ordered native extension validators; full strict package decoding, domain extensions, Wasm/reference policy and identity/trust remain trusted host ports."
     }
   ]
 }

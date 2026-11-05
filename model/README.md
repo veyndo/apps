@@ -42,3 +42,28 @@ consented package, not the action request body. Public-action classification,
 MCP exposure and callback key issuance retain their full package/host checks.
 `callback_facts` supplies independent consent/role facts to the host's existing
 verified predicate; it does not authenticate a caller or approve a callback alone.
+
+## Package compiler and host extensions
+
+`package::compile` owns the original common package grammar: identity, runtime,
+version and budgets; capability declarations; model/index constraints; configuration
+bindings; action input/output schemas, privacy/Flow/job/payment/asset rules; legacy
+slots and event names. It requires a trusted `Policy` for the current scope
+registry, Wasm kind inspection and native reference rules. There are no default
+policies. This is declaration validation; actual identity/current-rights admission
+still runs separately on every operation.
+
+The `Contract` is a borrowed projection from the host's complete typed package. It
+is deliberately not a replacement JSON decoder or proof of provider approval. The
+required `Extensions::before` and `after` methods must validate every remaining
+feature from that same complete package. Veyndo retains all original validators
+for lifecycle, settings, UI, distribution/signing, payments, hooks, schedules and
+other domain extensions, in their original order. No plugin/request may choose
+these trusted host implementations. An independent host must supply its own full
+decoder and domain validators before claiming complete package support.
+
+`model/tests/package_contract.rs` and `package_actions.rs` exercise this interface
+without Veyndo, SQL, network or Wasm execution. The twelve added tests include
+required extension denial/order, package budgets, schema closure, append-only
+forms, private/public reads, jobs, payment actions, assets and configuration/Flow
+restrictions. `Slot` retains the native strict wire type and published digests.
