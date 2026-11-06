@@ -8,6 +8,7 @@ pub mod installation;
 pub mod job_control;
 pub mod job_history;
 pub mod jobs;
+pub mod managed_hooks;
 pub mod mutations;
 pub mod packages;
 pub mod progress;

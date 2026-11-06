@@ -1,9 +1,16 @@
-# Veyndo App Data reader
+# Veyndo App Data service
 
 Read installed App data from your own application or agent through HTTP, MCP or
 JavaScript. This Rust service runs without a Veyndo Core process. It shares the
 actual native bounded query preparation, declared-field projection and signed
 PostgreSQL scope protocol with Veyndo.
+
+## Optional managed writes
+
+Service 0.2.0 adds an explicitly enabled managed-write profile with package/revision
+fences, current action rights, typed private records, state transitions, atomic
+history/outbox and the same SDK/MCP operations. [Enable and use managed writes](managed-writes.md).
+The default read profile below keeps its original SELECT-only schema and grants.
 
 ## Run
 

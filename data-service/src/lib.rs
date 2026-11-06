@@ -5,7 +5,11 @@ mod database;
 mod error;
 mod identity;
 mod mcp;
+mod portable;
 mod reader;
+mod write_contract;
+mod write_role;
+mod writer;
 use axum::{
     Json, Router,
     extract::{DefaultBodyLimit, Extension, State},
@@ -26,7 +30,7 @@ pub struct App {
 }
 impl App {
     pub async fn new(config: config::Config, role: &str) -> Result<Self, &'static str> {
-        let pool = database::connect(&config.database, role).await?;
+        let pool = database::connect(&config.database, role, config.writes).await?;
         let http = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .connect_timeout(std::time::Duration::from_secs(2))
@@ -47,16 +51,24 @@ impl App {
     }
 }
 pub fn router(app: App) -> Router {
+    let writes = app.config.writes;
     let protected = Router::new()
         .route("/v1/records/query", post(read))
-        .route("/v1/contract", get(|| async { Json(contract::document()) }))
+        .route(
+            "/v1/contract",
+            get(
+                |State(app): State<App>| async move { Json(contract::document(app.config.writes)) },
+            ),
+        )
         .route(
             "/v1/openapi.json",
-            get(|| async { Json(contract::openapi()) }),
+            get(|State(app): State<App>| async move { Json(contract::openapi(app.config.writes)) }),
         )
+        .route("/v1/records/write", post(write))
+        .route("/v1/records/history", post(history))
         .route("/mcp", post(mcp::handle))
         .route_layer(middleware::from_fn_with_state(app.clone(), identity::admit));
-    Router::new().route("/health",get(||async{Json(serde_json::json!({"ok":true,"service":"veyndo-app-data","version":env!("CARGO_PKG_VERSION")}))})).merge(protected).layer(DefaultBodyLimit::max(16384)).layer(middleware::map_response(|mut r:Response|async move {r.headers_mut().insert(header::CACHE_CONTROL,header::HeaderValue::from_static("no-store"));r.headers_mut().insert(header::X_CONTENT_TYPE_OPTIONS,header::HeaderValue::from_static("nosniff"));r})).with_state(app)
+    Router::new().route("/health",get(||async{Json(serde_json::json!({"ok":true,"service":"veyndo-app-data","version":env!("CARGO_PKG_VERSION")}))})).merge(protected).layer(DefaultBodyLimit::max(if writes {131072}else{16384})).layer(middleware::map_response(|mut r:Response|async move {r.headers_mut().insert(header::CACHE_CONTROL,header::HeaderValue::from_static("no-store"));r.headers_mut().insert(header::X_CONTENT_TYPE_OPTIONS,header::HeaderValue::from_static("nosniff"));r})).with_state(app)
 }
 async fn read(
     State(app): State<App>,
@@ -77,4 +89,41 @@ async fn read(
         })?
         .0;
     Ok(Json(reader::read(&app, p, input, false).await?).into_response())
+}
+
+async fn write(
+    State(app): State<App>,
+    Extension(p): Extension<identity::Principal>,
+    body: Result<Json<write_contract::Write>, axum::extract::rejection::JsonRejection>,
+) -> error::Result<Response> {
+    let input = body
+        .map_err(|r| {
+            error::Problem::new(
+                if r.status() == StatusCode::PAYLOAD_TOO_LARGE {
+                    r.status()
+                } else {
+                    StatusCode::BAD_REQUEST
+                },
+                "invalid_write",
+                "Use the approved package-bound write contract",
+            )
+        })?
+        .0;
+    Ok(Json(writer::write(&app, p, input, false).await?).into_response())
+}
+async fn history(
+    State(app): State<App>,
+    Extension(p): Extension<identity::Principal>,
+    body: Result<Json<write_contract::History>, axum::extract::rejection::JsonRejection>,
+) -> error::Result<Response> {
+    let input = body
+        .map_err(|_| {
+            error::Problem::new(
+                StatusCode::BAD_REQUEST,
+                "invalid_history",
+                "Use the App record history contract",
+            )
+        })?
+        .0;
+    Ok(Json(writer::history(&app, p, input, false).await?).into_response())
 }

@@ -20,3 +20,9 @@ role-bound context and forced RLS are mandatory. The serving process neither run
 schema installation nor exposes a seed/write endpoint. The operator's migration
 and installation authority remains separate. See its README for the explicit
 schema/key setup and the still-required native object resolver.
+
+The opt-in managed-write profile is a separate schema/permission upgrade. It
+requires current apps.manage and installed save rights, explicit confirmation,
+package digest and record revision. It shares the original mutation/state/history
+and atomic outbox sequence. Unsupported native policies deny. See the managed-write
+guide for exact positive/forbidden database privileges and uncertain-response handling.

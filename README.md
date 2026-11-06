@@ -15,7 +15,10 @@ The [App Data reader](data-service/) adds independent HTTP/MCP/SDK access to
 private installed App records on a versioned fixed PostgreSQL schema. Current
 OAuth rights, forced signed RLS and a restricted read-only login are enforced.
 It shares actual native page/field rules and the [host authority adapter](authority/).
-Full installation/write/jobs hosting and storage cutover remain on the [component task list](https://github.com/veyndo/veyndo/blob/main/docs/commerce-components.md).
+The [managed write profile](data-service/managed-writes.md) adds explicitly
+approved package-bound CAS changes, original states, retained history and atomic
+outbox for portable private records. Full installation/native-policy/jobs hosting
+and storage cutover remain on the [component task list](https://github.com/veyndo/veyndo/blob/main/docs/commerce-components.md).
 The storage library is a trusted host port, not a browser authentication boundary.
 
 ## Independent Wasm runtime
