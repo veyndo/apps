@@ -53,6 +53,7 @@ standalone authentication service.
 | Object bindings and graph | [Product/customer/order/company declarations and graph views](model/README.md#native-object-bindings-and-graph-views); actual object rights and scoped lists stay with the host. |
 | Placements and HTTP routes | [Strict surface/route grammar](model/README.md#placements-and-named-http-routes); native views, known team scopes and read-only effects require trusted host policies. |
 | Native views and UI behavior | [Typed controls, geometry, editor bindings and bounded behavior](model/README.md#native-views-and-ui-behavior); actual execution, field policies and current grants stay with the host. |
+| Native order and quote lifecycles | [Bounded graph compilation and accepted snapshots](model/README.md#native-order-and-quote-lifecycle-contracts), with an [executable example](examples/native_lifecycles.rs); current native rights and effects stay with the host. |
 | Configuration and commerce examples | [Strict business contracts](model/README.md#configuration-and-executable-business-contracts) and [actual independent preflight](runtime/README.md#business-preflight); host policies, current record/package ownership and effects remain attached. |
 
 ## What is shared with Veyndo

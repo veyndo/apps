@@ -1,0 +1,204 @@
+{
+  "id": "production_review",
+  "version": "1.0.0",
+  "digest": "admitted-complete-package-digest",
+  "permissions": [
+    "commerce.lifecycle"
+  ],
+  "lifecycles": [
+    {
+      "version": 1,
+      "object": "order",
+      "states": [
+        {
+          "id": "quality",
+          "label": {
+            "en-GB": "Quality review",
+            "de-DE": "Qualitätsprüfung",
+            "fr-FR": "Contrôle qualité",
+            "es-ES": "Control de calidad"
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "id": "review",
+          "from": "in_progress",
+          "to": "quality",
+          "replaces": "complete",
+          "label": {
+            "en-GB": "Review quality",
+            "de-DE": "Qualität prüfen",
+            "fr-FR": "Vérifier qualité",
+            "es-ES": "Revisar calidad"
+          }
+        },
+        {
+          "id": "approve",
+          "from": "quality",
+          "to": "completed",
+          "requiredPermissions": [
+            "documents.read"
+          ],
+          "guards": [
+            "payment.ready",
+            "delivery.delivered"
+          ],
+          "label": {
+            "en-GB": "Approve completion",
+            "de-DE": "Abschluss freigeben",
+            "fr-FR": "Valider fin",
+            "es-ES": "Aprobar finalización"
+          }
+        },
+        {
+          "id": "cancel",
+          "from": "quality",
+          "to": "cancelled",
+          "label": {
+            "en-GB": "Cancel order",
+            "de-DE": "Bestellung stornieren",
+            "fr-FR": "Annuler commande",
+            "es-ES": "Cancelar pedido"
+          }
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "object": "quote",
+      "states": [
+        {
+          "id": "technical",
+          "label": {
+            "en-GB": "Technical review",
+            "de-DE": "Technische Prüfung",
+            "fr-FR": "Contrôle technique",
+            "es-ES": "Revisión técnica"
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "id": "assess",
+          "from": "requested",
+          "to": "technical",
+          "guards": [
+            "quote.message"
+          ],
+          "label": {
+            "en-GB": "Review request",
+            "de-DE": "Anfrage prüfen",
+            "fr-FR": "Examiner demande",
+            "es-ES": "Revisar solicitud"
+          }
+        },
+        {
+          "id": "ready",
+          "from": "technical",
+          "to": "requested",
+          "requiredPermissions": [
+            "documents.read"
+          ],
+          "label": {
+            "en-GB": "Ready to offer",
+            "de-DE": "Angebot vorbereiten",
+            "fr-FR": "Prêt pour devis",
+            "es-ES": "Preparar oferta"
+          }
+        }
+      ]
+    }
+  ],
+  "orderBase": {
+    "states": [
+      {
+        "id": "placed",
+        "label": {
+          "en": "placed",
+          "de": "placed",
+          "fr": "placed",
+          "es": "placed"
+        },
+        "terminal": false
+      },
+      {
+        "id": "in_progress",
+        "label": {
+          "en": "in_progress",
+          "de": "in_progress",
+          "fr": "in_progress",
+          "es": "in_progress"
+        },
+        "terminal": false
+      },
+      {
+        "id": "completed",
+        "label": {
+          "en": "completed",
+          "de": "completed",
+          "fr": "completed",
+          "es": "completed"
+        },
+        "terminal": true
+      },
+      {
+        "id": "cancelled",
+        "label": {
+          "en": "cancelled",
+          "de": "cancelled",
+          "fr": "cancelled",
+          "es": "cancelled"
+        },
+        "terminal": true
+      }
+    ],
+    "transitions": [
+      {
+        "id": "start",
+        "from": "placed",
+        "to": "in_progress",
+        "label": {
+          "en": "start",
+          "de": "start",
+          "fr": "start",
+          "es": "start"
+        }
+      },
+      {
+        "id": "complete",
+        "from": "in_progress",
+        "to": "completed",
+        "label": {
+          "en": "complete",
+          "de": "complete",
+          "fr": "complete",
+          "es": "complete"
+        }
+      },
+      {
+        "id": "cancel_new",
+        "from": "placed",
+        "to": "cancelled",
+        "label": {
+          "en": "cancel_new",
+          "de": "cancel_new",
+          "fr": "cancel_new",
+          "es": "cancel_new"
+        }
+      },
+      {
+        "id": "cancel_active",
+        "from": "in_progress",
+        "to": "cancelled",
+        "label": {
+          "en": "cancel_active",
+          "de": "cancel_active",
+          "fr": "cancel_active",
+          "es": "cancel_active"
+        }
+      }
+    ],
+    "sourceApp": null
+  }
+}

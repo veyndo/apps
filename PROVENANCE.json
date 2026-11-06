@@ -131,6 +131,16 @@
         "src/apps/runtime.rs"
       ],
       "boundary": "Strict configuration, hook and frozen-decision contracts with mandatory native currency/value/reference/source policies. Runtime reuses those pure models for synthetic WIT projections, real frozen decision evaluation and bounded contribution execution. Native cache, current package/identity, selected records, async host admission and transactional checkout/release remain attached."
+    },
+    {
+      "sourceCommit": "25a5f8b9b45ac8a1a98b68cd9b9a204797e4da96",
+      "sourceOwners": [
+        "src/apps/native_lifecycle.rs",
+        "src/apps/native_lifecycle/compile.rs",
+        "src/apps/native_lifecycle/storage.rs",
+        "src/commerce/order_machine.rs"
+      ],
+      "boundary": "Exact lifecycle/extended graph/snapshot wire types, bounded graph compiler, deterministic namespace and version/digest policies, locale fallback, narrowing facts and accepted snapshot/label projection. Mandatory native base graph/scope/locale and current-permission ports; native order-domain base validation, actual locks/current identity/transactional effects and verified final transition predicate remain host owners."
     }
   ]
 }
