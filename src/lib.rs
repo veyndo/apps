@@ -10,6 +10,7 @@ pub mod packages;
 pub mod progress;
 pub mod queries;
 pub mod records;
+pub mod secrets;
 pub use error::Error;
 
 /// Already admitted host scope. This key is not an authentication credential.

@@ -188,3 +188,30 @@ The database tests cover scope/hostile labels, tied/cross-tenant/stale cursors,
 uncertainty projections, concurrent CAS, denied admission and hook/outbox rollback.
 Creator-role revalidation, signed callback identities, completion evidence and the
 verified completion predicate remain with the existing host owners.
+
+## Encrypted app settings and credentials
+
+Release 0.18.0 supplies `secrets` for metadata-only reads, digest-bound internal
+resolution and the original revisioned encrypted rotation transaction. A required
+`Crypto` port supplies authenticated encryption and key management; there is no
+plaintext or approving fallback. Veyndo delegates to its existing platform owner.
+The component retains `app:tenant:app:kind:digest:revision` binding, scoped locking,
+CAS, active-package admission and atomic metadata-only outbox. Revision overflow
+returns an explicit invalid-input error. Caller transactions own commit/rollback.
+`resolve_locked` keeps the original webhook verification/receipt row lock through
+rotation races. Current personal administrator admission, declared kinds/settings,
+consent, sandbox exclusion, payload rules and browser redaction stay host-owned.
+
+After the disposable database contract test, run:
+
+```sh
+APP_STORAGE_TEST_DATABASE_URL=postgres://.../disposable_storage_test \
+  cargo run --locked --example encrypted_settings
+```
+
+[The example](examples/encrypted_settings.rs) uses a fresh ephemeral test-only
+AES-GCM key, runs model preparation, storage, internal resolution and secret-safe
+projection, then rolls everything back. It prints no key, value or ciphertext.
+Production hosts must supply their own admitted identity, supported schema and
+real key owner. No production key provisioning, pool/schema creation or implicit
+transaction commit is provided by the library.
