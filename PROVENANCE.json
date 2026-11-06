@@ -167,6 +167,14 @@
         "src/apps/jobs.rs"
       ],
       "boundary": "Scoped bounded job history/detail projections and original merchant control transaction: row/revision fence, explicit outcome review, retry/cancel/resolve/archive, actor/package rebind and atomic outbox. Required retry hook keeps current action/rights/input admission native. Current response redaction, authenticated identities, callbacks, completion evidence and verified completion stay host-owned."
+    },
+    {
+      "sourceCommit": "bf0ad71be4f4cd922d8771f3ba03fcad977c6133",
+      "sourceOwners": [
+        "src/apps/secrets.rs",
+        "src/apps/settings.rs"
+      ],
+      "boundary": "Digest-bound encrypted configuration metadata/read/rotation with required host seal/open port, original binding string, lock/CAS/current-package admission, shared webhook read lock and atomic metadata-only outbox. Native current identity/rights, direct verified personal-administrator predicate, consent, declared kinds/settings, sandbox exclusion, key owner and browser projection remain authoritative. Checked revision increment rejects exhaustion instead of overflowing."
     }
   ]
 }

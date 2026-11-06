@@ -1,6 +1,6 @@
 [package]
 name = "veyndo-app-storage"
-version = "0.17.0"
+version = "0.18.0"
 edition = "2024"
 license-file = "LICENSE"
 description = "Scoped PostgreSQL persistence extracted from Veyndo native app records and jobs"
