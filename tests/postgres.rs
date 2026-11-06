@@ -19,6 +19,8 @@ mod mutation_cases;
 mod package_cases;
 #[path = "cases/queries.rs"]
 mod query_cases;
+#[path = "cases/record_history.rs"]
+mod record_history_cases;
 #[path = "cases/secrets.rs"]
 mod secret_cases;
 #[tokio::test]
@@ -35,5 +37,6 @@ async fn independent_postgres_contract() -> Result<(), Box<dyn std::error::Error
     secret_cases::run(&pool).await?;
     build_version_cases::run(&pool).await?;
     draft_cases::run(&pool).await?;
+    record_history_cases::run(&pool).await?;
     Ok(())
 }

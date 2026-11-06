@@ -11,6 +11,7 @@ pub mod mutations;
 pub mod packages;
 pub mod progress;
 pub mod queries;
+pub mod record_history;
 pub mod records;
 pub mod secrets;
 pub use error::Error;

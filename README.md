@@ -287,3 +287,38 @@ deletion, then rolls back. Its synthetic identities are not a production login
 adapter. Automated storage regressions also cover concurrent create/update and
 quota contention, database reconnect, rollback, byte-budget boundaries, denied
 host checks, revision exhaustion and absence of package/outbox effects.
+
+## App record history and restoration
+
+Release 0.21.0 adds `record_history`: immutable scoped field snapshots with original
+list-action read scopes, actor/source attribution and the existing retention
+limits of 20 revisions per record and 16 MiB per app. One fixed history table
+serves all apps and tenants; no installation creates extra SQL objects.
+
+`ReadAuthority` supplies current authenticated rights. Historical read scopes are
+retained even after a package changes; malformed retained scope values fail
+closed. `list` returns trusted host rows after that check. The host must still
+admit the current entity and project its current declared fields before output.
+Raw snapshot fields are not a public DTO or permission grant.
+
+`RestoreHost` has no default writer. It must call the normal current-package,
+typed-field/reference/lifecycle/CAS write path on the original transaction. A
+restoration creates a new revision and its normal history/event, preserving
+existing clocks, package identity and publication rules. Native Veyndo uses its
+actual managed writer. The caller owns current entity rights, explicit review,
+expected revision, signed scope, actor/source context and commit/rollback.
+
+After the disposable PostgreSQL contract test, run:
+
+```sh
+APP_STORAGE_TEST_DATABASE_URL=postgres://.../disposable_storage_test \
+  cargo run --locked --example record_history
+```
+
+[The example](examples/record_history.rs) captures scoped history, denies absent
+read rights and proves there is no implicit restore writer, then rolls back.
+Automated PostgreSQL regressions use the actual shared CAS writer/history/outbox
+to test successful restoration, two competing restores, stale versions, changed
+rights/field shapes, history/audit failures and atomic rollback. Retention tests
+exercise actual `pg_column_size` beyond 16 MiB and preserve other apps/tenants.
+Production identity/schema hosting and final product deployment remain separate.
