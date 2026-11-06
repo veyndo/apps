@@ -51,7 +51,8 @@ pub struct Frozen {
     pub records: Vec<Record>,
 }
 impl Frozen {
-    pub fn validate<P: fields::ValuePolicy>(&self, m: &Context<'_>, policy: &P) -> Result<()> {
+    /// Common frozen-value budgets before contextual entity/field admission. No authority or live data lookup.
+    pub fn validate_bounds(&self) -> Result<()> {
         let bounded_id = |id: &str| !id.is_empty() && id.len() <= 100;
         let price = |p: &Amount| {
             p.valid()
@@ -95,6 +96,10 @@ impl Frozen {
         {
             return Err(bad("Invalid frozen commerce snapshot"));
         }
+        Ok(())
+    }
+    pub fn validate<P: fields::ValuePolicy>(&self, m: &Context<'_>, policy: &P) -> Result<()> {
+        self.validate_bounds()?;
         for record in &self.records {
             if record.revision == 0
                 || !record.fields.is_object()

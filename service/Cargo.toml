@@ -1,0 +1,22 @@
+[package]
+name = "veyndo-app-runtime-service"
+version = "0.1.0"
+edition = "2024"
+license-file = "../LICENSE"
+description = "Authenticated standalone HTTP and MCP evaluation of bounded Veyndo App Wasm components"
+
+[workspace]
+
+[dependencies]
+veyndo-app-runtime = { path = "../runtime" }
+veyndo-app-model = { path = "../model" }
+axum = "0.8.9"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "sync", "time", "signal"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+sha2 = "0.10"
+zeroize = "1"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
