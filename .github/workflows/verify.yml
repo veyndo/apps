@@ -52,3 +52,4 @@ jobs:
       - run: cargo test --locked --manifest-path runtime/Cargo.toml
       - run: cargo run --locked --manifest-path runtime/Cargo.toml --example quote -- 25000
       - run: cargo run --locked --manifest-path runtime/Cargo.toml --example business_preflight
+      - run: cargo run --locked --manifest-path runtime/Cargo.toml --example package_compile

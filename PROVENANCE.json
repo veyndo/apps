@@ -152,6 +152,14 @@
         "src/payments/contract.rs"
       ],
       "boundary": "Complete strict typed Manifest, common grammar projection and canonical fingerprint/signing message; original passive artwork and payment declaration grammar plus distribution/dependency graph rules. Required current operator signature verification, reserved namespaces/service pins, current identity, installed scoped locks and actual financial effects remain native."
+    },
+    {
+      "sourceCommit": "28c8d34521460ae4d84e571d54e1b183ce200c7e",
+      "sourceOwners": [
+        "src/apps/manifest_validation.rs",
+        "src/apps/surfaces.rs"
+      ],
+      "boundary": "Complete ordered standard package compiler: object/lifecycle/settings/configuration/artwork/ontology/evolution/distribution/hooks/business/provider/common/subscription/delivery/schedule/webhook/surface/intelligence/view checks are mandatory shared stages. Trusted native field/reference/currency/scope/source/base/signature/namespace/destination/read-effect/clock policies remain required ports; actual identity, consent, source preparation, transactional installation and financial effects remain native."
     }
   ]
 }

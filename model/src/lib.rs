@@ -3,6 +3,7 @@ pub mod admission;
 pub mod business_capability;
 pub mod business_snapshot;
 pub mod commerce_hooks;
+pub mod compiler;
 pub mod configuration;
 pub mod declarations;
 pub mod distribution;

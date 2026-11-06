@@ -48,6 +48,7 @@ standalone authentication service.
 
 | Capability | Contract and host boundary |
 | --- | --- |
+| Complete standard compiler | [All 19 domain stages and mandatory host policies](model/README.md#complete-standard-package-compiler), with an [independent example](runtime/examples/package_compile.rs); current identity, installation and effects stay host-owned. |
 | Complete package wire, publisher and provider contracts | [Strict Manifest, fingerprints, dependency graphs and domain grammar](model/README.md#complete-package-wire-and-domain-contracts), with an [executable signing example](examples/package_contracts.rs); current trust, identity and effects stay host-owned. |
 | Settings and schema evolution | [Strict updates, secret-safe projections and explicit upgrades](model/README.md#settings-and-explicit-model-upgrades); encryption and transactions stay with the host. |
 | Events and triggers | [Subscriptions, privacy, filters, schedules and webhooks](model/README.md#events-schedules-and-incoming-webhooks); URL policy, signatures and queues stay with the host. |
