@@ -322,7 +322,8 @@ object bindings, order/quote lifecycles, settings, configuration, artwork,
 ontology, schema evolution, publisher distribution, commerce hooks, business
 examples, payment declarations, common grammar, subscriptions, event delivery,
 schedules, incoming webhooks, surfaces, intelligence metadata and native views.
-The first failure retains its model kind/pointer or actual host error. Domain
+An exhaustive Manifest pattern forces a compiler review when new package fields
+are added. The first failure retains its model kind/pointer or actual host error. Domain
 selection is not a caller option and there are no before/after host callbacks that
 can accidentally omit a standard domain. The older `package::compile` is the
 lower-level common grammar and does not replace this complete entry point.

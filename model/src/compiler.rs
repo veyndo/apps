@@ -53,6 +53,38 @@ impl<P: Policy> surfaces::Policy for SurfacePolicy<'_, P> {
 }
 /// Runs every standard domain in its original native order; returning success does not install, authenticate or execute an app.
 pub fn compile<P: Policy>(m: &Manifest, policy: &P) -> Result<(), CompileError<P::Error>> {
+    // Exhaustive on purpose: adding package metadata requires reviewing the complete
+    // domain pipeline, even when an individual validator accepts the whole Manifest.
+    let Manifest {
+        id: _,
+        version: _,
+        core_api: _,
+        runtime: _,
+        name: _,
+        category: _,
+        distribution: _,
+        presentation: _,
+        capability: _,
+        lifecycles: _,
+        permissions: _,
+        configuration: _,
+        settings: _,
+        commerce_hooks: _,
+        payment_provider: _,
+        entities: _,
+        slots: _,
+        actions: _,
+        events: _,
+        event_filters: _,
+        event_delivery: _,
+        surfaces: _,
+        api_routes: _,
+        intelligence: _,
+        views: _,
+        schedules: _,
+        schema_migrations: _,
+        webhooks: _,
+    } = m;
     let model = CompileError::Model;
     object_extensions::validate(&m.entities, &m.actions, &m.permissions).map_err(model)?;
     let digest = manifest::canonical_digest(m);
