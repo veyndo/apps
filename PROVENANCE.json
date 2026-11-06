@@ -184,6 +184,13 @@
         "src/developer/archive.rs"
       ],
       "boundary": "Immutable App Studio snapshot persistence and original serialized-byte digest; bounded active/archive history, recoverable archive/restore and row-locked staging through required host environment/compiler/current-actor/actual-installer admission. Original privileged caller transaction, HTTP/MCP approval, live/private ownership, locale/source validation and minimized evidence projection remain native. No independent identity/schema or implicit install/commit is introduced."
+    },
+    {
+      "sourceCommit": "1095d4d34aa8d689de9b32137d28de2c0e44533b",
+      "sourceOwners": [
+        "src/developer/drafts.rs"
+      ],
+      "boundary": "Original actor-private mutable draft persistence, strict shared wire decoding and error order, 64 KiB budget, original actor advisory lock, mandatory same-connection environment ownership hook, row CAS, 20-draft quota and scoped read/delete. Authenticated actor derivation, current developer authority, signed database scope and transaction ownership remain native. No install, immutable version change, publication, schema creation or default admission."
     }
   ]
 }

@@ -39,6 +39,7 @@ jobs:
       - run: cargo run --locked --example job_control
       - run: cargo run --locked --example encrypted_settings
       - run: cargo run --locked --example build_versions
+      - run: cargo run --locked --example private_drafts
 
   runtime:
     runs-on: ubuntu-latest
