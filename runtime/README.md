@@ -53,6 +53,9 @@ codes retain their original checks. Validation hooks cannot adjust money. Core
 configuration calls accept one to eight declared integer arguments. No WASI,
 network, filesystem, database or secret imports are installed.
 
+The separate [runtime service](../service/) now supplies current OAuth access,
+HTTP/OpenAPI/MCP and SDK examples using this unchanged execution library.
+
 Limits are per process/call and use Wasmtime; they are not an OS process boundary
 or fleet-wide quota. Resource admission and execution do not authenticate a caller,
 create a package grant, or establish a standalone Apps API/MCP service.

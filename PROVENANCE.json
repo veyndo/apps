@@ -216,6 +216,22 @@
         "src/apps/records.rs"
       ],
       "boundary": "Original explicit schema migration, old declared-field projection, bounded recovery snapshots, model/record revision writes and atomic schema event in the caller installation transaction. Required same-connection host field/language/currency/rich-content validation has no approving default. Complete compiler/current identity/trust/consent/reference projection and tenant/package fences remain with the actual installer; no pool, schema creation, commit or automatic historical rewind. Checked record revision increment rejects exhaustion after field validation."
+    },
+    {
+      "sourceCommit": "438d7d2a36ad0f57085a9bb12885400e7786f97e",
+      "sourceOwners": [
+        "extensions/services/app-storage/model/src/business_snapshot.rs"
+      ],
+      "boundary": "Original frozen snapshot amount/currency/identity/uniqueness/cardinality bounds exposed as validate_bounds; the full contextual validate still invokes the same bounds before original declared-record and field-policy checks. No change to original native acceptance or identity authority."
+    }
+  ],
+  "standaloneAdapters": [
+    {
+      "directory": "service",
+      "version": "0.1.0",
+      "boundary": "Original independent Rust HTTP/OpenAPI/stateless MCP network adapter over the unchanged bounded runtime and shared frozen bounds. Fixed OAuth introspection supplies fresh current scope/subject/tenant; no local identity/role store, issuer, database, live resolver or financial writer. Strict synthetic input, same operation, sanitized typed result and task-owned per-process capacity.",
+      "sdkRepository": "https://github.com/veyndo/sdk",
+      "sdkCommit": "c621cee931a2e04ba204607a7115f0202797973c"
     }
   ]
 }
