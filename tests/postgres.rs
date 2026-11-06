@@ -1,6 +1,8 @@
 //! Actual independent PostgreSQL persistence: composite scope, atomic handoff, replay, quota, restart and lease fences.
 #[path = "cases/basic_storage.rs"]
 mod basic_storage;
+#[path = "cases/build_versions.rs"]
+mod build_version_cases;
 #[path = "cases/installation.rs"]
 mod installation;
 #[path = "cases/installation_concurrency.rs"]
@@ -29,5 +31,6 @@ async fn independent_postgres_contract() -> Result<(), Box<dyn std::error::Error
     job_control_cases::run(&pool).await?;
     job_history_cases::run(&pool).await?;
     secret_cases::run(&pool).await?;
+    build_version_cases::run(&pool).await?;
     Ok(())
 }

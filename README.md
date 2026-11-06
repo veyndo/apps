@@ -215,3 +215,39 @@ projection, then rolls everything back. It prints no key, value or ciphertext.
 Production hosts must supply their own admitted identity, supported schema and
 real key owner. No production key provisioning, pool/schema creation or implicit
 transaction commit is provided by the library.
+
+## Immutable Studio versions and private staging
+
+Release 0.19.0 adds `build_versions`: immutable development snapshot persistence,
+original serialized-byte digests, bounded active/archive history, recoverable
+archive/restore and the actual row-fenced staging sequence. Native Core uses the
+same component. The development digest deliberately retains its original JSON
+serialization contract; it is not substituted by the installed-package digest.
+Archived version identities remain immutable. Archive/restore never changes
+installed packages, app records or published versions.
+
+Staging requires `StageAdmission`, with no approving default. The native adapter
+checks owned private environment, typed package/compiler and current actor scopes,
+then calls the actual shared installation path on the same original transaction.
+The component marks a build staged only after that succeeds. All failures require
+caller rollback of package/model/version/event writes and build state. Current
+HTTP/MCP approval, role/tenant scope and privileged connection stay host-owned.
+
+History rows are trusted host data: retained prompts are consumed only by the
+host's minimized design-evidence projection. Never serialize raw rows or expose
+prompts to public clients. The component does not authenticate actors, create a
+schema/pool, choose an environment or commit transactions.
+
+After the disposable PostgreSQL contract test, run:
+
+```sh
+APP_STORAGE_TEST_DATABASE_URL=postgres://.../disposable_storage_test \
+  cargo run --locked --example build_versions
+```
+
+[The example](examples/build_versions.rs) executes save/history/archive/restore
+and proves staging is denied without an authorized installer, then rolls back.
+The PostgreSQL regression exercises successful staging through the actual shared
+installer with explicit synthetic hooks, failures at admission/install/state
+write, foreign/archive/digest denial, concurrent immutable saves and staging
+versus archival. These fixture policies are not a production identity/compiler.
