@@ -40,6 +40,19 @@ checks enter through explicit required ports. Veyndo implements those ports with
 its existing owners; callers cannot select a permissive policy through HTTP/MCP.
 Model checks do not authenticate users or resolve ownership of referenced objects.
 
+## Install a private data App independently
+
+Apps 0.28.0 / Data service 0.4.0 can review and install a complete private data
+package through HTTP, OpenAPI, MCP and the existing SDK, without a Veyndo Core
+process. The full compiler, exact digest/permission/revision confirmation,
+original installer/model sequence, immutable versions and fixed shared storage
+form one transaction. Current personal live administrator authority is required.
+[Setup and executable SDK journey](data-service/installation.md).
+
+Native Veyndo also calls shared `models::install`, retaining its actual native
+compatibility policy and full installation owner. Unsupported standalone native
+resources, service effects and UI do not acquire approving fallback policies.
+
 ## Host authority ports
 
 The model admission module shares private-merchant checks, primary/additional

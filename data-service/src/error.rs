@@ -9,18 +9,25 @@ use serde_json::{Value, json};
 pub struct Problem {
     pub status: StatusCode,
     pub code: &'static str,
-    pub detail: &'static str,
+    pub detail: String,
+    pub pointer: Option<String>,
 }
 impl Problem {
-    pub fn new(status: StatusCode, code: &'static str, detail: &'static str) -> Self {
+    pub fn new(status: StatusCode, code: &'static str, detail: impl Into<String>) -> Self {
         Self {
             status,
             code,
-            detail,
+            detail: detail.into(),
+            pointer: None,
         }
     }
     pub fn value(&self) -> Value {
-        json!({"status":self.status.as_u16(),"code":self.code,"detail":self.detail})
+        let mut value =
+            json!({"status":self.status.as_u16(),"code":self.code,"detail":self.detail});
+        if let Some(pointer) = &self.pointer {
+            value["pointer"] = json!(pointer);
+        }
+        value
     }
 }
 impl IntoResponse for Problem {

@@ -81,7 +81,7 @@ def start(env,success=True):
         if process.poll() is not None:
             log.seek(0);content=log.read();log.close()
             assert not success,content
-            assert 'restricted' in content or 'Unsupported' in content or 'Managed writer' in content or 'settings writer' in content, content
+            assert 'restricted' in content or 'Unsupported' in content or 'Managed writer' in content or 'settings writer' in content or 'App installer' in content, content
             return None
         if success:
             try:
@@ -159,6 +159,8 @@ try:
     run(globals())
     from settings_cases import run as settings_run
     settings_run(globals())
+    from install_cases import run as install_run
+    install_run(globals())
     print('PASS independent Rust HTTP/MCP/SDK, two shops, signed RLS, restricted reader, current rights, revocation, package disable, projection, pagination and native-resolver denial')
 finally:
     if running:running[0].terminate();running[0].wait();running[1].close()

@@ -27,8 +27,9 @@ indexes are created.
 The trusted installation owner must validate/provision complete immutable
 packages and register `model::manifest::canonical_digest(&manifest)` in
 `app_packages.digest`. Existing rows default to an empty registration and cannot
-save settings until that owner registers their exact current package. A request
-cannot change this column. This service does not introduce an installation API.
+save settings until that owner registers their exact current package. A settings request
+cannot change this column. The separate opt-in [installation profile](installation.md)
+can review and install portable private data packages; schema 3 alone cannot.
 
 Set these private deployment values alongside the existing App Data configuration:
 
@@ -112,6 +113,6 @@ await client.tool('apps.settings.save', {
 fixture workflow. `tests/acceptance.py` runs the real Rust process and PostgreSQL
 with two shops, current authority, CAS races, package changes, late rollback,
 wrong keys, cross-shop ciphertext rejection and persistence across restart.
-Container CI repeats it using the nonroot Rust-only image. This settings profile
-does not yet provide installation, transport-secret rotation, jobs, internal
+Container CI repeats it using the nonroot Rust-only image. The standalone installation profile is a separate schema-4 opt-in. Settings alone
+do not provide transport-secret rotation, jobs, internal
 runtime setting resolution, restore or complete standalone release orchestration.

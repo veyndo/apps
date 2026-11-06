@@ -17,6 +17,7 @@ pub async fn connect(
     role: &str,
     writes: bool,
     settings: bool,
+    installs: bool,
 ) -> std::result::Result<PgPool, &'static str> {
     let pool = PgPoolOptions::new()
         .max_connections(8)
@@ -30,22 +31,25 @@ pub async fn connect(
       AND NOT EXISTS(SELECT 1 FROM pg_class c WHERE c.relowner=r.oid)
       AND NOT EXISTS(SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE 'pg_%' AND has_schema_privilege(n.oid,'CREATE'))
       AND NOT has_schema_privilege('veyndo_authority','USAGE')
-      AND NOT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND (has_table_privilege(c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,TRIGGER,REFERENCES') OR has_any_column_privilege(c.oid,'INSERT,UPDATE,REFERENCES')) AND NOT ($2 AND c.relname IN ('app_records','app_record_versions','outbox','app_packages')) AND NOT ($3 AND c.relname='app_service_secrets'))
-      AND (SELECT version=CASE WHEN $3 THEN 3 WHEN $2 THEN 2 ELSE 1 END AND component='veyndo-app-data-reader' FROM public.app_host_schema WHERE id)
+      AND NOT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND (has_table_privilege(c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,TRIGGER,REFERENCES') OR has_any_column_privilege(c.oid,'INSERT,UPDATE,REFERENCES')) AND NOT ($2 AND c.relname IN ('app_records','app_record_versions','outbox','app_packages')) AND NOT ($3 AND c.relname='app_service_secrets') AND NOT ($4 AND c.relname IN ('app_models','app_versions','app_storage_usage')))
+      AND (SELECT version=CASE WHEN $4 THEN 4 WHEN $3 THEN 3 WHEN $2 THEN 2 ELSE 1 END AND component='veyndo-app-data-reader' FROM public.app_host_schema WHERE id)
       AND (public.veyndo_scope_status()->>'enforced')::boolean
       AND public.veyndo_scope_status()->>'tenantRole'=r.rolname
       AND (SELECT count(*)=3 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('app_packages','app_models','app_records') AND c.relrowsecurity AND c.relforcerowsecurity)
-      FROM pg_roles r WHERE r.rolname=session_user"#).bind(role).bind(writes).bind(settings).fetch_one(&pool).await.map_err(|_|"Unsupported App Data schema or database role")?;
+      FROM pg_roles r WHERE r.rolname=session_user"#).bind(role).bind(writes).bind(settings).bind(installs).fetch_one(&pool).await.map_err(|_|"Unsupported App Data schema or database role")?;
     if !valid {
         return Err(
             "App Data requires the supported schema and a dedicated restricted login for its selected profile",
         );
     }
     if writes {
-        crate::write_role::check(&pool).await?;
+        crate::write_role::check(&pool, installs).await?;
     }
     if settings {
         crate::settings_role::check(&pool).await?;
+    }
+    if installs {
+        crate::install_role::check(&pool).await?;
     }
     Ok(pool)
 }

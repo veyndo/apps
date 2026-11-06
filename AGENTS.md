@@ -23,8 +23,11 @@ and the src/ storage library; their authority rules above remain unchanged.
 
 The separate data-service/ root owns HTTP/MCP hosting, fixed-schema
 installation tooling and current OAuth/signed PostgreSQL admission. Its serving
-process defaults to a restricted nonowner reader and cannot install packages or
-schemas. An explicitly enabled managed-write profile uses only admitted portable
+process defaults to a restricted nonowner reader. Schemas always require the
+separate migration owner. Ordinary profiles cannot install packages; an explicit
+portable installation profile admits only fully compiled private app_ data packages
+with current personal/live administrator consent, package CAS, shared installer/model
+sequence, immutable versions and fixed row/byte budgets. An explicitly enabled managed-write profile uses only admitted portable
 private records with package/revision fences, shared fields/workflow/history and
 atomic outbox. Native resource-dependent models require their actual policies. Native object-bound models require the actual resolver; deny them until
 that port is implemented. authority/ holds the original shared signing protocol

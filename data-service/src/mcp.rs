@@ -3,7 +3,7 @@ use crate::{
     App, contract,
     error::{Problem, Result},
     identity::Principal,
-    reader, settings, settings_contract, write_contract, writer,
+    install_contract, installer, reader, settings, settings_contract, write_contract, writer,
 };
 use axum::{
     Extension, Json,
@@ -96,6 +96,9 @@ pub async fn handle(
                     settings_contract::tool(true),
                 ]);
             }
+            if app.config.installs.is_some() {
+                tools.extend([install_contract::tool(false), install_contract::tool(true)]);
+            }
             json!({"tools":tools})
         }
         "tools/call" => {
@@ -133,6 +136,18 @@ pub async fn handle(
                     match serde_json::from_value(args) {
                         Ok(input) => settings::save(&app, p, input).await,
                         Err(_) => return fail(-32602, "Invalid settings arguments"),
+                    }
+                }
+                Some("apps.packages.review") if app.config.installs.is_some() => {
+                    match serde_json::from_value(args) {
+                        Ok(input) => installer::review(&app, p, input).await,
+                        Err(_) => return fail(-32602, "Invalid package review arguments"),
+                    }
+                }
+                Some("apps.packages.install") if app.config.installs.is_some() => {
+                    match serde_json::from_value(args) {
+                        Ok(input) => installer::install(&app, p, input).await,
+                        Err(_) => return fail(-32602, "Invalid package install arguments"),
                     }
                 }
                 _ => return fail(-32602, "Unknown tool"),

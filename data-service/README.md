@@ -18,6 +18,13 @@ Service 0.3.0 adds the explicit schema-3 settings profile, shared with native Ve
 [Configure and use encrypted settings](settings.md). The ordinary reader and writer
 profiles retain their existing schema/grants and do not expose settings.
 
+## Optional portable package installation
+
+Service 0.4.0 adds explicit schema-4 package review and installation through
+HTTP, MCP and the existing SDK. [Install a private data App](installation.md).
+It uses the complete compiler and shared native installation/model sequence,
+with immutable version history and original per-App row/byte budgets.
+
 ## Run
 
 Build from the Apps repository root:
@@ -118,14 +125,15 @@ checkout of `veyndo/sdk/src/index.js`. These are the actual acceptance calls.
 This is the supported **reader schema and service**, not the complete independent
 app lifecycle host. Packages/models/records must be provisioned by a trusted
 installation owner after its full package compiler, field/reference and migration
-checks. There is deliberately no public seed, install or write shortcut. The local
+checks. There is no public seed shortcut. The optional installation profile above supplies
+reviewed portable package admission; ordinary profiles have no install authority. The local
 test creates synthetic fixtures as its separate migration owner. Native Veyndo
 continues using its existing actual installer, shared storage and transaction owner.
 
 Models extending or referencing product, customer, order or company are rejected
 with `native_resolver_required` until the real authorized object resolver is wired.
 This cannot be bypassed by adding more token scopes. Managed private writes/history and encrypted settings have explicit opt-in profiles
-above. Transport-secret rotation, jobs, restore, complete lifecycle orchestration
+above. Transport-secret rotation, jobs, restore, complete native lifecycle orchestration
 and durable marketplace hosting remain separate checklist tasks.
 
 ## Verification and image

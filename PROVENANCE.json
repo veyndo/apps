@@ -249,6 +249,13 @@
         "crates/cognition/src/inference/settings.rs"
       ],
       "boundary": "Declared settings encrypted partial-update/projection sequence and original AES-GCM envelope; native personal/live administrator authority and operator key loading remain host-owned. Independent App Data settings profile requires current nondelegatable personal/live identity, explicit schema/role upgrade and its own operator vault key."
+    },
+    {
+      "sourceCommit": "aea83aa1d73a459341cbf7bc5e1f485e8025ed2f",
+      "sourceOwners": [
+        "src/apps/records.rs"
+      ],
+      "boundary": "Original model-definition installation, required native compatibility, required-field guard and projection rebuild moved into models; complete native installer and source policies retain their owners. Independent portable installer uses the same sequence with full compiler, fresh personal administrator consent, fixed DML profile, immutable versions and quota/event rollback."
     }
   ],
   "standaloneAdapters": [

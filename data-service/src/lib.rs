@@ -4,6 +4,12 @@ pub mod contract;
 mod database;
 mod error;
 mod identity;
+mod install_contract;
+mod install_hooks;
+mod install_policy;
+mod install_role;
+mod installer;
+mod management;
 mod mcp;
 mod portable;
 mod reader;
@@ -38,6 +44,7 @@ impl App {
             role,
             config.writes,
             config.settings.is_some(),
+            config.installs.is_some(),
         )
         .await?;
         let http = reqwest::Client::builder()
@@ -69,6 +76,7 @@ pub fn router(app: App) -> Router {
                 Json(contract::document(
                     app.config.writes,
                     app.config.settings.is_some(),
+                    app.config.installs.is_some(),
                 ))
             }),
         )
@@ -78,12 +86,14 @@ pub fn router(app: App) -> Router {
                 Json(contract::openapi(
                     app.config.writes,
                     app.config.settings.is_some(),
+                    app.config.installs.is_some(),
                 ))
             }),
         )
         .route("/v1/records/write", post(write))
         .route("/v1/records/history", post(history))
         .merge(settings::router())
+        .merge(installer::router())
         .route("/mcp", post(mcp::handle))
         .route_layer(middleware::from_fn_with_state(app.clone(), identity::admit));
     Router::new().route("/health",get(||async{Json(serde_json::json!({"ok":true,"service":"veyndo-app-data","version":env!("CARGO_PKG_VERSION")}))})).merge(protected).layer(DefaultBodyLimit::max(if writes {131072}else{16384})).layer(middleware::map_response(|mut r:Response|async move {r.headers_mut().insert(header::CACHE_CONTROL,header::HeaderValue::from_static("no-store"));r.headers_mut().insert(header::X_CONTENT_TYPE_OPTIONS,header::HeaderValue::from_static("nosniff"));r})).with_state(app)

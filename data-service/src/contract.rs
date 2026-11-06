@@ -48,9 +48,18 @@ pub fn schema() -> Value {
 pub fn tool() -> Value {
     json!({"name":"apps.records.read","description":"Read declared fields of one currently installed private App list action using current merchant permissions","inputSchema":schema(),"annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}})
 }
-pub fn document(writes: bool, settings: bool) -> Value {
+pub fn document(writes: bool, settings: bool, installs: bool) -> Value {
+    if installs {
+        let mut doc = document(writes, settings, false);
+        doc["version"] = json!(4);
+        doc["installation"] = json!(true);
+        for install in [false, true] {
+            doc["operations"].as_array_mut().unwrap().push(json!({"name":if install{"apps.packages.install"}else{"apps.packages.review"},"schema":crate::install_contract::schema(install)}));
+        }
+        return doc;
+    }
     if settings {
-        let mut doc = document(writes, false);
+        let mut doc = document(writes, false, false);
         doc["version"] = json!(3);
         doc["settings"] = json!(true);
         for save in [false, true] {
@@ -67,7 +76,7 @@ fn read_openapi() -> Value {
     json!({"openapi":"3.1.0","info":{"title":"Veyndo App Data","version":env!("CARGO_PKG_VERSION")},"paths":{"/v1/records/query":{"post":{"operationId":"apps.records.read","security":[{"bearer":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":schema()}}},"responses":{"200":{"description":"Bounded declared-field record page"},"400":{"description":"Invalid query or installed action schema"},"401":{"description":"Inactive or invalid token"},"403":{"description":"Current permission or MCP grant denied"},"404":{"description":"Installed app or action unavailable"},"422":{"description":"A native object resolver is required"},"503":{"description":"Identity or data service unavailable"}}}}},"components":{"securitySchemes":{"bearer":{"type":"http","scheme":"bearer"}}}})
 }
 
-pub fn openapi(writes: bool, settings: bool) -> Value {
+pub fn openapi(writes: bool, settings: bool, installs: bool) -> Value {
     let mut doc = read_openapi();
     if writes {
         for (path, name, schema) in [
@@ -93,6 +102,16 @@ pub fn openapi(writes: bool, settings: bool) -> Value {
                 "/v1/settings/read"
             };
             doc["paths"][path] = json!({"post":{"operationId":if save {"apps.settings.save"}else{"apps.settings.read"},"security":[{"bearer":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":crate::settings_contract::schema(save)}}},"responses":{"200":{"description":"Secret-safe settings result"},"400":{"description":"Invalid declared settings"},"403":{"description":"Personal live administrator required"},"409":{"description":"Package or settings revision changed"},"503":{"description":"Encrypted settings unavailable; check revision before retrying"}}}});
+        }
+    }
+    if installs {
+        for install in [false, true] {
+            let path = if install {
+                "/v1/packages/install"
+            } else {
+                "/v1/packages/review"
+            };
+            doc["paths"][path] = json!({"post":{"operationId":if install{"apps.packages.install"}else{"apps.packages.review"},"security":[{"bearer":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":crate::install_contract::schema(install)}}},"responses":{"200":{"description":"Reviewed package or atomic installation"},"400":{"description":"Invalid package or incomplete approval"},"403":{"description":"Personal live administrator required"},"409":{"description":"Package/model/version changed"},"422":{"description":"Unsupported host policy"},"503":{"description":"Storage unavailable; review current revision before retry"}}}});
         }
     }
     doc
