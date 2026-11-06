@@ -358,3 +358,38 @@ actual host authority and rolls back. Storage tests use durable synthetic host
 facts/connected references for successful transitions and denial cases, then the
 actual shared installer/package writer to test dependency races in both orders.
 Those fixture facts do not replace production authentication or native trust.
+
+## Schema migration and recovery snapshots
+
+Release 0.23.0 adds `schema_upgrade`, the original bounded field migration and
+recovery capture used inside package installation. Rename, remove, exact type
+conversion and missing-value fill use the shared evolution model. Historical
+snapshots retain the old manifest and declared fields, IDs and revisions before
+conversion. The existing fixed tables serve every tenant/app/model.
+
+Call this only inside the complete admitted installer under its tenant/package
+fences. Required `Validation::fields` checks each converted record on the same
+connection; the native host retains typed values, current content languages,
+currency and rich-content policy. Installation still performs actual reference,
+projection, consent, trust and dependency admission and owns commit/rollback.
+There is no default validator, new pool, schema creation or automatic schema rewind.
+
+The original limits remain 2,000 records per affected model, 4,000,000 serialized
+bytes per recovery snapshot and 16,000,000 retained bytes per tenant/app. History
+is never silently deleted. Every affected row advances its revision; an exhausted
+revision returns a conflict after field validation, without wrapping or panicking.
+The caller must roll back every error, including later installation failures.
+
+After the disposable PostgreSQL contract test, run:
+
+```sh
+APP_STORAGE_TEST_DATABASE_URL=postgres://.../disposable_storage_test \
+  cargo run --locked --example schema_upgrade
+```
+
+[The example](examples/schema_upgrade.rs) converts a synthetic string quantity to
+an integer, reads its original recovery value and rolls back. Tests compose the
+actual shared installer with required synthetic host hooks and cover multilingual
+values, tenant/app isolation, conversion/validation/late failure rollback, row and
+byte budgets, immutable history collisions and revision exhaustion. These fixtures
+do not provide production identity or signed database authority.

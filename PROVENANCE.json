@@ -207,6 +207,15 @@
         "src/apps/distribution.rs"
       ],
       "boundary": "Original app-state transaction with required native config-before-lifecycle lock, actual activation and connected-frontend hooks. Original tenant/package fences shared with installation/writers, active-dependant query, late revision CAS/error order, response and retained data semantics. Current actor/merchant/signed scope, consent/publisher trust/dependencies/commerce/native-lifecycle owners and commit remain native. No implicit installation, deletion, new event/schema or approving default host."
+    },
+    {
+      "sourceCommit": "b7c8ec7f6abbade8c1b9b7c610d4a5e2d8bb9b32",
+      "sourceOwners": [
+        "src/apps/schema_upgrade.rs",
+        "src/apps/schema_changes.rs",
+        "src/apps/records.rs"
+      ],
+      "boundary": "Original explicit schema migration, old declared-field projection, bounded recovery snapshots, model/record revision writes and atomic schema event in the caller installation transaction. Required same-connection host field/language/currency/rich-content validation has no approving default. Complete compiler/current identity/trust/consent/reference projection and tenant/package fences remain with the actual installer; no pool, schema creation, commit or automatic historical rewind. Checked record revision increment rejects exhaustion after field validation."
     }
   ]
 }

@@ -14,6 +14,7 @@ pub mod progress;
 pub mod queries;
 pub mod record_history;
 pub mod records;
+pub mod schema_upgrade;
 pub mod secrets;
 pub use error::Error;
 
