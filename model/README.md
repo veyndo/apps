@@ -237,3 +237,37 @@ The runtime package projects admitted frozen snapshots into WIT, executes the
 actual guest and compares its result. Model declaration validation and executed
 example acceptance are separate mandatory steps in the complete native compiler.
 See the [independent business preflight](../runtime/examples/business_preflight.rs).
+
+## Native order and quote lifecycle contracts
+
+Apps 0.14.0/model 0.10.0 shares `native_lifecycle` declarations, extended graph
+wire types, bounded compilation, required-main-language labels and narrowing facts.
+A trusted `CompilerPolicy` supplies the admitted native order graph, known current
+scope catalogue and locale grammar. `Package` borrows the complete admitted
+package ID/version/digest. Compute that digest with the host's full canonical
+Manifest, never the lifecycle projection. The SHA-256 state/action namespace stays
+identical to the original host.
+
+`validate` admits one order and one quote declaration, then compiles each. For
+combined installation, call `compile` with all active admitted packages and the
+already-validated native base. It rejects competing replacements, stranded states,
+unknown scopes/guards, terminal exits and attempts to replace financial or buyer
+acceptance decisions. Native `start`/`complete` can be narrowed. The component does
+not execute transitions or invent payment/delivery facts.
+
+`native_lifecycle_snapshot` decodes the immutable accepted graph, preserves its
+revision and projects customer-visible labels without policies. Malformed or
+wrong-object/version snapshots fail with `Conflict`; they never silently fall
+back to the current graph. `reason` calls a required current-permission callback
+and checks declared facts. It is eligibility narrowing, not authorization to apply
+an order transition. The host retains actual identity/tenant checks, native domain
+validation, payment/delivery/buyer checks, transactions and final verified predicate.
+
+```sh
+cargo run --locked --example native_lifecycles
+cargo test --locked --manifest-path model/Cargo.toml --test native_lifecycle
+```
+
+The executable example compiles order quality review and quote preparation and
+checks accepted labels plus revoked permission. Fixtures are synthetic; no database,
+Core binary, external payment or merchant credentials are used.
