@@ -191,6 +191,14 @@
         "src/developer/drafts.rs"
       ],
       "boundary": "Original actor-private mutable draft persistence, strict shared wire decoding and error order, 64 KiB budget, original actor advisory lock, mandatory same-connection environment ownership hook, row CAS, 20-draft quota and scoped read/delete. Authenticated actor derivation, current developer authority, signed database scope and transaction ownership remain native. No install, immutable version change, publication, schema creation or default admission."
+    },
+    {
+      "sourceCommit": "5b75a65646a3e16b9fa95f70a1969361e072e583",
+      "sourceOwners": [
+        "src/apps/record_history.rs",
+        "src/apps/record_write.rs"
+      ],
+      "boundary": "Original immutable app-record capture/read/restore orchestration with retained list-action scopes, actor/source SQL context, original per-record 20 and per-app 16 MiB pruning/lock sequence. Current read authority and actual validated managed restore writer are required ports. Native current entity rights/field projection, approval/revision, signed scope, package/reference/lifecycle/CAS/history/outbox path and caller commit remain authoritative. Nonpositive capture revisions reject before subtraction; no schema creation or direct restore write bypass."
     }
   ]
 }
