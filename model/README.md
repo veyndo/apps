@@ -271,3 +271,45 @@ cargo test --locked --manifest-path model/Cargo.toml --test native_lifecycle
 The executable example compiles order quality review and quote preparation and
 checks accepted labels plus revoked permission. Fixtures are synthetic; no database,
 Core binary, external payment or merchant credentials are used.
+
+## Complete package wire and domain contracts
+
+Apps 0.15.0/model 0.11.0 exports `manifest::Manifest`, the full native strict JSON
+contract assembled from all shared domain types. Core aliases that exact type.
+Every optional/default/omitted field retains its original serde behavior; 34
+complete native package fixtures retain their canonical fingerprints. Decoding
+alone does not admit a package or approve its provider.
+
+`Manifest::common_contract` borrows the original common compiler projection.
+`manifest::value_digest`, `canonical_digest` and `signature_message` share the
+original sorted serde_json representation. Only the signature itself is cleared
+from the signed message. The storage package delegates to this same fingerprint.
+Existing package/action/version/source fences therefore use identical bytes.
+Recursive key ordering preserves those fingerprints even when a downstream host
+unifies serde_json with `preserve_order`; CI checks that explicit feature case.
+
+`presentation::validate` keeps passive media/assets and credential-free HTTPS
+artwork grammar. The `url` dependency only parses URLs; it never fetches them.
+`payment_provider::validate_contract` keeps service/category/consent, native
+reserved IDs and the closed method/currency/country/intent/capability grammar,
+including multi-capture prerequisites. It does not execute or authorize payments.
+
+`distribution::verify` runs metadata, mandatory `SignatureVerifier`, then declared
+dependency validation in the original order. Implement that port with the current
+operator's registered keys and full `signature_message`; native Veyndo retains
+its original Ed25519 verifier and exact HTTP failure semantics. There is no default
+trust implementation. `require_version` checks the verified installed publisher
+and semantic version. `validate_graph` rejects cycles, more than 256 reachable
+apps and upgrades breaking active dependants. Supply only current tenant-scoped,
+locked active packages from the trusted host. Signature validity does not grant
+service access, current user rights or installation consent.
+
+```sh
+cargo run --locked --example package_contracts
+```
+
+The example decodes all 34 full packages, signs/verifies a synthetic provider with
+actual Ed25519, rejects altered permissions and a revoked operator key, and checks
+passive artwork/payment declarations. No Core process, database, network or real
+merchant secret is used. Full domain admission still runs through the required
+native compiler/policy ports and actual host effects.

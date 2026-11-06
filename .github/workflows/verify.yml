@@ -27,10 +27,12 @@ jobs:
       - run: cargo fmt --all --check && cargo clippy --workspace --locked --all-targets -- -D warnings
       - run: cargo clippy --locked --manifest-path model/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --locked --manifest-path model/Cargo.toml --tests
+      - run: cargo test --locked --manifest-path model/Cargo.toml --features ordered-json-compat --test package_domains
       - run: cargo run --locked --example upgrade_settings
       - run: cargo run --locked --example event_contracts
       - run: cargo run --locked --example object_graph
       - run: cargo run --locked --example surface_routes
+      - run: cargo run --locked --example package_contracts
       - run: cargo run --locked --example native_lifecycles
       - run: cargo run --locked --example native_views
       - run: cargo test --locked --test postgres -- --ignored --nocapture
