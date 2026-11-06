@@ -1,6 +1,6 @@
 [package]
 name = "veyndo-app-runtime"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license-file = "../LICENSE"
 description = "Bounded Wasm/WIT app execution with mandatory trusted-host resource admission"
@@ -9,3 +9,5 @@ description = "Bounded Wasm/WIT app execution with mandatory trusted-host resour
 wasmtime = { version = "49.0.1", default-features = false, features = ["cranelift", "runtime", "std", "wat", "pooling-allocator", "component-model"] }
 wat = "1.260.0"
 sha2 = "0.10"
+veyndo-app-model = { path = "../model" }
+serde_json = { version = "1", features = ["float_roundtrip"] }

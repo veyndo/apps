@@ -119,6 +119,18 @@
         "extensions/sdk/wit/commerce.wit"
       ],
       "boundary": "Actual bounded Wasmtime core/component executor behind required trusted-host resource admission and explicit legacy namespace configuration. Native verified resource predicate remains the production adapter. Original isolated stores, fuel/epoch/host-call/snapshot/outcome limits and read-only WIT ABI preserved; no identities, SQL, WASI, external effects, or platform policy authority."
+    },
+    {
+      "sourceCommit": "a37f02e022ea0b25398b17791af18e6da96f2db5",
+      "sourceOwners": [
+        "src/apps/manifest.rs",
+        "src/apps/configuration_inputs.rs",
+        "src/apps/commerce_hooks.rs",
+        "src/apps/business_capability/mod.rs",
+        "src/apps/business_capability/snapshot.rs",
+        "src/apps/runtime.rs"
+      ],
+      "boundary": "Strict configuration, hook and frozen-decision contracts with mandatory native currency/value/reference/source policies. Runtime reuses those pure models for synthetic WIT projections, real frozen decision evaluation and bounded contribution execution. Native cache, current package/identity, selected records, async host admission and transactional checkout/release remain attached."
     }
   ]
 }

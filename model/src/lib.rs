@@ -1,5 +1,9 @@
 //! Pure app data contracts and validation; no database, network, identity resolution or commerce mutation authority.
 pub mod admission;
+pub mod business_capability;
+pub mod business_snapshot;
+pub mod commerce_hooks;
+pub mod configuration;
 pub mod declarations;
 mod error;
 pub mod events;

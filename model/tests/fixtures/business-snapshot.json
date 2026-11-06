@@ -1,0 +1,170 @@
+{
+  "entities": [],
+  "actions": [],
+  "permissions": [
+    "commerce.hooks"
+  ],
+  "commerceHooks": {
+    "source": ";; Typed fixture: calls the real host cart snapshot and returns one percent of its subtotal.\n(component\n  (import \"veyndo:commerce/context@1.0.0\" (instance $context\n    (type $money-local (record (field \"minor\" s64) (field \"currency\" string) (field \"scale\" u8)))\n    (export \"money\" (type $money (eq $money-local)))\n    (type $item-local (record (field \"id\" string) (field \"quantity\" u32) (field \"price\" $money)))\n    (export \"cart-item\" (type $item (eq $item-local)))\n    (type $items (list $item))\n    (type $cart-local (record (field \"items\" $items) (field \"subtotal\" $money)))\n    (export \"cart-snapshot\" (type $cart (eq $cart-local)))\n    (type $product-local (record (field \"id\" string) (field \"stock\" u32) (field \"price\" $money)))\n    (export \"product-snapshot\" (type $product (eq $product-local)))\n    (type $maybe-product (option $product))\n    (type $record-local (record (field \"id\" string) (field \"revision\" u64) (field \"fields-json\" string)))\n    (export \"app-record\" (type $record (eq $record-local)))\n    (type $maybe-record (option $record))\n    (export \"cart\" (func (result $cart)))\n    (export \"product\" (func (param \"id\" string) (result $maybe-product)))\n    (export \"record\" (func (param \"entity\" string) (param \"id\" string) (result $maybe-record)))\n  ))\n  (alias export $context \"money\" (type $money))\n  (core module $memory\n    (memory (export \"memory\") 1 16)\n    (global $heap (mut i32) (i32.const 4096))\n    (func (export \"realloc\") (param i32 i32 i32 i32) (result i32)\n      (local $p i32)\n      global.get $heap local.set $p\n      global.get $heap local.get 3 i32.add i32.const 7 i32.add i32.const -8 i32.and global.set $heap\n      local.get $p)\n  )\n  (core instance $mem (instantiate $memory))\n  (alias core export $mem \"memory\" (core memory $mem))\n  (alias core export $mem \"realloc\" (core func $alloc))\n  (alias export $context \"cart\" (func $cart-func))\n  (core func $read-cart (canon lower (func $cart-func) (memory $mem) (realloc $alloc)))\n  (core instance $host (export \"cart\" (func $read-cart)) (export \"memory\" (memory $mem)))\n  (core module $guest\n    (import \"host\" \"cart\" (func $cart (param i32)))\n    (import \"host\" \"memory\" (memory 1 16))\n    (data (i32.const 64) \"snapshot_price\")\n    (func (export \"evaluate\") (param $kind i32) (param i32 i32) (result i32)\n      i32.const 256 call $cart\n      ;; Money begins after the eight-byte items-list descriptor.\n      i32.const 512 i32.const 264 i64.load i64.const 100 i64.div_s i64.store\n      ;; Validation is deliberately a zero-money outcome.\n      local.get $kind i32.const 3 i32.eq if i32.const 512 i64.const 0 i64.store end\n      i32.const 520 i32.const 272 i32.load i32.store\n      i32.const 524 i32.const 276 i32.load i32.store\n      i32.const 528 i32.const 280 i32.load8_u i32.store8\n      i32.const 536 i32.const 1 i32.store8\n      i32.const 540 i32.const 64 i32.store\n      i32.const 544 i32.const 14 i32.store\n      i32.const 512)\n  )\n  (core instance $code (instantiate $guest (with \"host\" (instance $host))))\n  (type $kind (enum \"price\" \"shipping\" \"discount\" \"validation\"))\n  (type $outcome (record (field \"adjustment\" $money) (field \"accepted\" bool) (field \"reason-code\" string)))\n  (func $evaluate (param \"hook\" $kind) (param \"input\" string) (result $outcome)\n    (canon lift (core func $code \"evaluate\") (memory $mem) (realloc $alloc)))\n  (instance $hooks\n    (export \"kind\" (type $kind))\n    (export \"outcome\" (type $outcome))\n    (export \"evaluate\" (func $evaluate)))\n  (export \"veyndo:commerce/hooks@1.0.0\" (instance $hooks))\n)\n",
+    "hooks": [
+      "price",
+      "discount",
+      "shipping",
+      "validation"
+    ]
+  },
+  "capability": {
+    "version": 1,
+    "intent": {
+      "en": "Apply one percent of the current cart subtotal through a read-only commerce decision.",
+      "de": "Ein Prozent des aktuellen Warenkorb-Zwischenbetrags als schreibgesch\u00fctzte Commerce-Entscheidung anwenden.",
+      "fr": "Appliquer un pour cent du sous-total courant du panier via une d\u00e9cision en lecture seule.",
+      "es": "Aplicar un uno por ciento del subtotal actual del carrito mediante una decisi\u00f3n de solo lectura."
+    },
+    "assumptions": [
+      {
+        "en": "Amounts use integer minor units and the cart currency scale. Native checkout keeps ownership of taxes, stock and payment.",
+        "de": "Betr\u00e4ge verwenden ganzzahlige Untereinheiten und die W\u00e4hrungsskala des Warenkorbs. Steuern, Bestand und Zahlung bleiben im nativen Checkout.",
+        "fr": "Les montants utilisent des unit\u00e9s mineures enti\u00e8res et l\u2019\u00e9chelle de la devise du panier. Taxes, stock et paiement restent g\u00e9r\u00e9s par le checkout natif.",
+        "es": "Los importes usan unidades menores enteras y la escala de la moneda del carrito. Los impuestos, el stock y el pago siguen en el checkout nativo."
+      }
+    ],
+    "examples": [
+      {
+        "id": "empty",
+        "label": {
+          "en": "Empty",
+          "de": "Leerer Warenkorb",
+          "fr": "Panier vide",
+          "es": "Carrito vac\u00edo"
+        },
+        "hook": "price",
+        "snapshot": {
+          "subtotal": {
+            "minor": 0,
+            "currency": "EUR",
+            "scale": 2
+          }
+        },
+        "context": {},
+        "expected": {
+          "adjustment": {
+            "minor": 0,
+            "currency": "EUR",
+            "scale": 2
+          },
+          "accepted": true,
+          "reasonCode": "snapshot_price"
+        }
+      },
+      {
+        "id": "one_percent",
+        "label": {
+          "en": "One percent",
+          "de": "Ein Prozent",
+          "fr": "Un pour cent",
+          "es": "Uno por ciento"
+        },
+        "hook": "price",
+        "snapshot": {
+          "subtotal": {
+            "minor": 10000,
+            "currency": "EUR",
+            "scale": 2
+          }
+        },
+        "context": {},
+        "expected": {
+          "adjustment": {
+            "minor": 100,
+            "currency": "EUR",
+            "scale": 2
+          },
+          "accepted": true,
+          "reasonCode": "snapshot_price"
+        }
+      },
+      {
+        "id": "larger_cart",
+        "label": {
+          "en": "Larger cart",
+          "de": "Gr\u00f6\u00dferer Warenkorb",
+          "fr": "Panier plus grand",
+          "es": "Carrito m\u00e1s grande"
+        },
+        "hook": "shipping",
+        "snapshot": {
+          "subtotal": {
+            "minor": 25000,
+            "currency": "EUR",
+            "scale": 2
+          }
+        },
+        "context": {},
+        "expected": {
+          "adjustment": {
+            "minor": 250,
+            "currency": "EUR",
+            "scale": 2
+          },
+          "accepted": true,
+          "reasonCode": "snapshot_price"
+        }
+      },
+      {
+        "id": "jpy_scale",
+        "label": {
+          "en": "Jpy scale",
+          "de": "Yen ohne Nachkommastellen",
+          "fr": "Yen sans d\u00e9cimales",
+          "es": "Yenes sin decimales"
+        },
+        "hook": "discount",
+        "snapshot": {
+          "subtotal": {
+            "minor": 20000,
+            "currency": "JPY",
+            "scale": 0
+          }
+        },
+        "context": {},
+        "expected": {
+          "adjustment": {
+            "minor": 200,
+            "currency": "JPY",
+            "scale": 0
+          },
+          "accepted": true,
+          "reasonCode": "snapshot_price"
+        }
+      },
+      {
+        "id": "validation",
+        "label": {
+          "en": "Validation",
+          "de": "Pr\u00fcfung ohne Preis\u00e4nderung",
+          "fr": "Validation sans changement de prix",
+          "es": "Validaci\u00f3n sin cambio de precio"
+        },
+        "hook": "validation",
+        "snapshot": {
+          "subtotal": {
+            "minor": 10000,
+            "currency": "EUR",
+            "scale": 2
+          }
+        },
+        "context": {},
+        "expected": {
+          "adjustment": {
+            "minor": 0,
+            "currency": "EUR",
+            "scale": 2
+          },
+          "accepted": true,
+          "reasonCode": "snapshot_price"
+        }
+      }
+    ]
+  }
+}
