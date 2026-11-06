@@ -349,3 +349,11 @@ closed in the synthetic example; it is not a production policy implementation.
 cargo run --locked --manifest-path runtime/Cargo.toml --example package_compile
 cargo test --locked --manifest-path runtime/Cargo.toml --test complete_compiler
 ```
+
+## Frozen value bounds for independent evaluation
+
+Model 0.13.0 exposes `Frozen::validate_bounds` for the original amount, currency,
+identifier, uniqueness and cardinality budgets. The full contextual `validate`
+still invokes those same checks before its original declared-record/field-policy
+admission. The [separate runtime service](../service/) uses these bounds for supplied
+synthetic examples; it grants no live record or installation authority.
