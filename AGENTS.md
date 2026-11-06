@@ -39,3 +39,10 @@ from the fixed identity owner, never App/request fields or delegated tokens.
 Native settings use the same shared encrypted partial-update sequence; native
 verified personal/live administration remains attached. Vault provides the
 original envelope only, without key loading, SQL or identity authority.
+
+The optional schema-5 job supervisor admits only history/detail and original
+control operations. Preserve exact consent/CAS/current action input and rights,
+redact stale/revoked results through job_projection, and never grant enqueue,
+result/input/message or schema writes to its serving login. Trusted producers,
+worker callback/evidence and actual dispatch remain separate owners. No fake
+completion, automatic unknown retry, second outbox consumer or public seed path.

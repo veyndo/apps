@@ -5,6 +5,7 @@ pub struct Config {
     pub database: zeroize::Zeroizing<String>,
     pub signer: TenantSigner,
     pub writes: bool,
+    pub jobs: bool,
     pub installs: Option<Vec<String>>,
     pub settings: Option<veyndo_app_authority::vault::Vault>,
 }
@@ -88,7 +89,20 @@ impl Config {
             }
             _ => return Err("Installation requires the explicitly enabled settings/write profile"),
         };
+        let jobs = match std::env::var("APP_DATA_JOBS")
+            .as_deref()
+            .unwrap_or("disabled")
+        {
+            "disabled" => false,
+            "enabled" if installs.is_some() => true,
+            _ => {
+                return Err(
+                    "Job supervision requires the explicitly enabled installation/settings/write profile",
+                );
+            }
+        };
         Ok(Self {
+            jobs,
             installs,
             settings,
             writes,

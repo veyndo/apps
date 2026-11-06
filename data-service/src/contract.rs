@@ -30,7 +30,7 @@ pub struct Query {
     )]
     pub id: Option<String>,
 }
-fn present<'de, D, T>(d: D) -> Result<Option<T>, D::Error>
+pub(crate) fn present<'de, D, T>(d: D) -> Result<Option<T>, D::Error>
 where
     D: serde::Deserializer<'de>,
     T: serde::Deserialize<'de>,
@@ -48,9 +48,20 @@ pub fn schema() -> Value {
 pub fn tool() -> Value {
     json!({"name":"apps.records.read","description":"Read declared fields of one currently installed private App list action using current merchant permissions","inputSchema":schema(),"annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}})
 }
-pub fn document(writes: bool, settings: bool, installs: bool) -> Value {
+pub fn document(writes: bool, settings: bool, installs: bool, jobs: bool) -> Value {
+    if jobs {
+        let mut doc = document(writes, settings, installs, false);
+        doc["version"] = json!(5);
+        doc["jobs"] = json!(true);
+        for op in ["list", "detail", "control"] {
+            doc["operations"].as_array_mut().unwrap().push(
+                json!({"name":format!("apps.jobs.{op}"),"schema":crate::job_contract::schema(op)}),
+            );
+        }
+        return doc;
+    }
     if installs {
-        let mut doc = document(writes, settings, false);
+        let mut doc = document(writes, settings, false, false);
         doc["version"] = json!(4);
         doc["installation"] = json!(true);
         for install in [false, true] {
@@ -59,7 +70,7 @@ pub fn document(writes: bool, settings: bool, installs: bool) -> Value {
         return doc;
     }
     if settings {
-        let mut doc = document(writes, false, false);
+        let mut doc = document(writes, false, false, false);
         doc["version"] = json!(3);
         doc["settings"] = json!(true);
         for save in [false, true] {
@@ -76,7 +87,7 @@ fn read_openapi() -> Value {
     json!({"openapi":"3.1.0","info":{"title":"Veyndo App Data","version":env!("CARGO_PKG_VERSION")},"paths":{"/v1/records/query":{"post":{"operationId":"apps.records.read","security":[{"bearer":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":schema()}}},"responses":{"200":{"description":"Bounded declared-field record page"},"400":{"description":"Invalid query or installed action schema"},"401":{"description":"Inactive or invalid token"},"403":{"description":"Current permission or MCP grant denied"},"404":{"description":"Installed app or action unavailable"},"422":{"description":"A native object resolver is required"},"503":{"description":"Identity or data service unavailable"}}}}},"components":{"securitySchemes":{"bearer":{"type":"http","scheme":"bearer"}}}})
 }
 
-pub fn openapi(writes: bool, settings: bool, installs: bool) -> Value {
+pub fn openapi(writes: bool, settings: bool, installs: bool, jobs: bool) -> Value {
     let mut doc = read_openapi();
     if writes {
         for (path, name, schema) in [
@@ -112,6 +123,11 @@ pub fn openapi(writes: bool, settings: bool, installs: bool) -> Value {
                 "/v1/packages/review"
             };
             doc["paths"][path] = json!({"post":{"operationId":if install{"apps.packages.install"}else{"apps.packages.review"},"security":[{"bearer":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":crate::install_contract::schema(install)}}},"responses":{"200":{"description":"Reviewed package or atomic installation"},"400":{"description":"Invalid package or incomplete approval"},"403":{"description":"Personal live administrator required"},"409":{"description":"Package/model/version changed"},"422":{"description":"Unsupported host policy"},"503":{"description":"Storage unavailable; review current revision before retry"}}}});
+        }
+    }
+    if jobs {
+        for op in ["list", "detail", "control"] {
+            doc["paths"][format!("/v1/jobs/{op}")] = json!({"post":{"operationId":format!("apps.jobs.{op}"),"security":[{"bearer":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":crate::job_contract::schema(op)}}},"responses":{"200":{"description":"Scoped job supervision result"},"400":{"description":"Invalid job query or approval"},"403":{"description":"Current authority denied"},"404":{"description":"Job unavailable"},"409":{"description":"Job/package revision or outcome review required"},"503":{"description":"Unconfirmed result; reload before retrying"}}}});
         }
     }
     doc

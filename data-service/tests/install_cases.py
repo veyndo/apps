@@ -114,4 +114,5 @@ def run(g):
     assert rpc('tools/call',dict(name='apps.packages.review',arguments={'manifest':upgrade}))['result']['structuredContent']['revision']==2
     subprocess.run([g['os'].environ.get('NODE','node'),str(root/'data-service/examples/install.mjs')],env=dict(g['os'].environ,APP_DATA_URL=g['BASE'],APP_DATA_TOKEN=g['TOKEN_A'],APP_DATA_SDK_MODULE=g['os'].environ['APP_DATA_SDK_MODULE']),check=True)
     stop();g['running']=g['start'](env);assert review(upgrade)['revision']==2 and read()['elements'][0]['title']=='First'
+    g['env']=env
     print('PASS independent installation: full compiler, exact permission/digest/revision approval, atomic models/versions/budget/events, two shops, live personal authority, immutable upgrades, rollback, SDK/MCP, restart and preserved record/settings flows')
