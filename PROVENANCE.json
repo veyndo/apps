@@ -223,6 +223,17 @@
         "extensions/services/app-storage/model/src/business_snapshot.rs"
       ],
       "boundary": "Original frozen snapshot amount/currency/identity/uniqueness/cardinality bounds exposed as validate_bounds; the full contextual validate still invokes the same bounds before original declared-record and field-policy checks. No change to original native acceptance or identity authority."
+    },
+    {
+      "sourceCommit": "fd370580d97b7133272ba96fb9d31e70a357d7f7",
+      "sourceOwners": [
+        "src/apps/data.rs",
+        "src/apps/records.rs",
+        "crates/runtime/src/database_scope.rs",
+        "crates/runtime/src/tenant_scope.rs",
+        "migrations/099-authenticated-database-scope.sql"
+      ],
+      "boundary": "Original record page preparation/projection and role-bound signed database scope protocol. Core retains task-local scope, provisioning, pools and native admission; standalone reader uses no system scope or migration connection. Shared current OAuth adapter extracted from service/ at Apps 0ed3d8bf75f5cd55b9e0cd3ef5d409ef7bcb233f."
     }
   ],
   "standaloneAdapters": [
@@ -230,6 +241,13 @@
       "directory": "service",
       "version": "0.1.0",
       "boundary": "Original independent Rust HTTP/OpenAPI/stateless MCP network adapter over the unchanged bounded runtime and shared frozen bounds. Fixed OAuth introspection supplies fresh current scope/subject/tenant; no local identity/role store, issuer, database, live resolver or financial writer. Strict synthetic input, same operation, sanitized typed result and task-owned per-process capacity.",
+      "sdkRepository": "https://github.com/veyndo/sdk",
+      "sdkCommit": "c621cee931a2e04ba204607a7115f0202797973c"
+    },
+    {
+      "directory": "data-service",
+      "version": "0.1.0",
+      "boundary": "Private installed App list actions on a dedicated versioned read schema. Current fixed OAuth merchant/rights, signed READ ONLY transactions, forced RLS and nonowner login. No public installer, writer, settings or jobs endpoint; Core-bound models require their native resolver.",
       "sdkRepository": "https://github.com/veyndo/sdk",
       "sdkCommit": "c621cee931a2e04ba204607a7115f0202797973c"
     }

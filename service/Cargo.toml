@@ -8,6 +8,7 @@ description = "Authenticated standalone HTTP and MCP evaluation of bounded Veynd
 [workspace]
 
 [dependencies]
+veyndo-app-authority = { path = "../authority", default-features = false, features = ["oauth"] }
 veyndo-app-runtime = { path = "../runtime" }
 veyndo-app-model = { path = "../model" }
 axum = "0.8.9"

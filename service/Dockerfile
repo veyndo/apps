@@ -3,6 +3,8 @@
 FROM rust:1.96-bookworm AS build
 WORKDIR /build
 COPY LICENSE LICENSE
+COPY authority/Cargo.toml authority/
+COPY authority/src/ authority/src/
 COPY model/Cargo.toml model/Cargo.lock model/
 COPY model/src/ model/src/
 COPY runtime/Cargo.toml runtime/Cargo.lock runtime/

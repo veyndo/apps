@@ -11,3 +11,12 @@ connection. Schema installation and signed row security remain host duties.
 Uncertain external effects must be reconciled before retry. Expired jobs are not
 automatically reclaimed. Security fixes are maintained on main and identified in
 component releases.
+
+## Independent read host
+
+`data-service/` accepts private installed list actions only, through fresh current
+OAuth merchant authority. A separate nonowner read-only PostgreSQL login, signed
+role-bound context and forced RLS are mandatory. The serving process neither runs
+schema installation nor exposes a seed/write endpoint. The operator's migration
+and installation authority remains separate. See its README for the explicit
+schema/key setup and the still-required native object resolver.

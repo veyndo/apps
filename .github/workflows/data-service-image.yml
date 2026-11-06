@@ -1,0 +1,50 @@
+name: App Data reader container
+on:
+  pull_request:
+    paths: ['data-service/**', 'authority/**', '.github/workflows/data-service-image.yml']
+  push:
+    branches: [main]
+    paths: ['data-service/**', 'authority/**', '.github/workflows/data-service-image.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: reader_fixture
+          POSTGRES_PASSWORD: synthetic-fixture-only
+          POSTGRES_DB: reader_fixture
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: veyndo/sdk
+          ref: c621cee931a2e04ba204607a7115f0202797973c
+          path: .sdk
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: data-service/Dockerfile
+          tags: veyndo-app-data:ci
+          load: true
+          cache-from: type=gha,scope=apps-data-reader
+          cache-to: type=gha,scope=apps-data-reader,mode=max
+      - name: Nonroot Rust-only process
+        run: |
+          test "$(docker inspect --format '{{.Config.User}}' veyndo-app-data:ci)" = '10001:10001'
+          docker run --rm --entrypoint sh veyndo-app-data:ci -c '! command -v python && ! command -v python3 && ! command -v cargo && ! command -v psql'
+      - run: python3 data-service/tests/acceptance.py
+        env:
+          APP_DATA_TEST_IMAGE: veyndo-app-data:ci
+          APP_DATA_TEST_ADMIN_URL: postgres://reader_fixture:synthetic-fixture-only@127.0.0.1:5432/reader_fixture
+          APP_DATA_SDK_MODULE: ${{ github.workspace }}/.sdk/src/index.js

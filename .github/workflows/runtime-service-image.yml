@@ -1,10 +1,10 @@
 name: Runtime service container
 on:
   pull_request:
-    paths: ['service/Dockerfile', '.github/workflows/runtime-service-image.yml']
+    paths: ['service/Dockerfile', 'authority/**', '.github/workflows/runtime-service-image.yml']
   push:
     branches: [main]
-    paths: ['service/Dockerfile', '.github/workflows/runtime-service-image.yml']
+    paths: ['service/Dockerfile', 'authority/**', '.github/workflows/runtime-service-image.yml']
   schedule:
     - cron: '45 2 * * *'
   workflow_dispatch:

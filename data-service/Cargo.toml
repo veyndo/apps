@@ -1,0 +1,17 @@
+[package]
+name = "veyndo-app-data-service"
+version = "0.1.0"
+edition = "2024"
+license-file = "../LICENSE"
+description = "Read-only independent App Data HTTP and MCP host with current OAuth authority and signed PostgreSQL scope"
+[workspace]
+[dependencies]
+veyndo-app-storage = { path = ".." }
+veyndo-app-authority = { path = "../authority", features = ["oauth"] }
+axum = "0.8.9"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "sync", "time", "signal"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+sqlx = { version = "0.9", default-features = false, features = ["postgres", "json", "runtime-tokio", "tls-rustls"] }
+zeroize = "1"
