@@ -104,7 +104,7 @@ pub async fn admit(State(app): State<App>, mut request: Request, next: Next) -> 
             Problem::new(
                 StatusCode::GATEWAY_TIMEOUT,
                 "request_timeout",
-                "The request did not finish in time; the data service has no write operation",
+                "The request did not finish in time; check the current record before retrying an uncertain write",
             )
         })
 }

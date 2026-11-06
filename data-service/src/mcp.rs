@@ -3,7 +3,7 @@ use crate::{
     App, contract,
     error::{Problem, Result},
     identity::Principal,
-    reader,
+    reader, write_contract, writer,
 };
 use axum::{
     Extension, Json,
@@ -86,23 +86,40 @@ pub async fn handle(
             {
                 return fail(-32602, "No tool cursor or other parameters are supported");
             }
-            json!({"tools":[contract::tool()]})
+            let mut tools = vec![contract::tool()];
+            if app.config.writes {
+                tools.extend([write_contract::tool(false), write_contract::tool(true)]);
+            }
+            json!({"tools":tools})
         }
         "tools/call" => {
-            if v["params"]["name"] != "apps.records.read"
-                || v["params"].as_object().is_none_or(|o| {
-                    o.keys()
-                        .any(|k| !["name", "arguments"].contains(&k.as_str()))
-                })
-            {
-                return fail(-32602, "Unknown tool or parameters");
+            if v["params"].as_object().is_none_or(|o| {
+                o.keys()
+                    .any(|k| !["name", "arguments"].contains(&k.as_str()))
+            }) {
+                return fail(-32602, "Unknown tool parameters");
             }
-            let Ok(input) =
-                serde_json::from_value::<contract::Read>(v["params"]["arguments"].clone())
-            else {
-                return fail(-32602, "Arguments must match the record query contract");
+            let args = v["params"]["arguments"].clone();
+            let outcome = match v["params"]["name"].as_str() {
+                Some("apps.records.read") => match serde_json::from_value(args) {
+                    Ok(input) => reader::read(&app, p, input, true).await,
+                    Err(_) => return fail(-32602, "Invalid read arguments"),
+                },
+                Some("apps.records.write") if app.config.writes => {
+                    match serde_json::from_value(args) {
+                        Ok(input) => writer::write(&app, p, input, true).await,
+                        Err(_) => return fail(-32602, "Invalid write arguments"),
+                    }
+                }
+                Some("apps.records.history") if app.config.writes => {
+                    match serde_json::from_value(args) {
+                        Ok(input) => writer::history(&app, p, input, true).await,
+                        Err(_) => return fail(-32602, "Invalid history arguments"),
+                    }
+                }
+                _ => return fail(-32602, "Unknown tool"),
             };
-            match reader::read(&app, p, input, true).await {
+            match outcome {
                 Ok(value) => {
                     let value = json!(value);
                     json!({"content":[{"type":"text","text":value.to_string()}],"structuredContent":value,"isError":false})

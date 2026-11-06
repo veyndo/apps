@@ -234,6 +234,13 @@
         "migrations/099-authenticated-database-scope.sql"
       ],
       "boundary": "Original record page preparation/projection and role-bound signed database scope protocol. Core retains task-local scope, provisioning, pools and native admission; standalone reader uses no system scope or migration connection. Shared current OAuth adapter extracted from service/ at Apps 0ed3d8bf75f5cd55b9e0cd3ef5d409ef7bcb233f."
+    },
+    {
+      "sourceCommit": "d0de8de003569d5df1a1509ba94bf8d6c79172b6",
+      "sourceOwners": [
+        "src/apps/record_write.rs"
+      ],
+      "boundary": "Original lifecycle and before/after bounded history hooks moved to managed_hooks, retaining native field/reference/language/package/identity admission, same transaction and original mutation/outbox owner."
     }
   ],
   "standaloneAdapters": [
@@ -250,6 +257,11 @@
       "boundary": "Private installed App list actions on a dedicated versioned read schema. Current fixed OAuth merchant/rights, signed READ ONLY transactions, forced RLS and nonowner login. No public installer, writer, settings or jobs endpoint; Core-bound models require their native resolver.",
       "sdkRepository": "https://github.com/veyndo/sdk",
       "sdkCommit": "c621cee931a2e04ba204607a7115f0202797973c"
+    },
+    {
+      "directory": "data-service",
+      "version": "0.2.0",
+      "boundary": "Opt-in portable private record write/history profile over a deliberate schema/grant upgrade. Current rights, explicit approval, installed digest, row CAS, typed fields, App-owned states, retained historical scopes and atomic outbox; unsupported native policies deny. No installer, privileged serving connection or automatic provider/Flow effects."
     }
   ]
 }

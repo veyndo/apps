@@ -1953,7 +1953,7 @@ dependencies = [
 
 [[package]]
 name = "veyndo-app-data-service"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "axum",
  "reqwest",
@@ -1981,7 +1981,7 @@ dependencies = [
 
 [[package]]
 name = "veyndo-app-storage"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "serde_json",
  "sha2 0.10.9",

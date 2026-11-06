@@ -79,6 +79,7 @@ pub async fn read(app: &App, p: Principal, input: Read, mcp: bool) -> Result<Val
         "app_unavailable",
         "The installed App action is unavailable",
     ))?;
+    let digest = veyndo_app_storage::packages::digest(&raw);
     let manifest: Manifest = serde_json::from_value(raw).map_err(|_| unavailable())?;
     if manifest.id != input.app {
         return Err(unavailable());
@@ -144,6 +145,9 @@ pub async fn read(app: &App, p: Principal, input: Read, mcp: bool) -> Result<Val
     if let Some(graph) = model::ontology::project(&p.tenant, &context, entity, &result["elements"])
     {
         result["ontology"] = graph;
+    }
+    if app.config.writes {
+        result["packageDigest"] = serde_json::json!(digest);
     }
     Ok(result)
 }

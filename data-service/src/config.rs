@@ -4,6 +4,7 @@ pub struct Config {
     pub identity: Identity,
     pub database: zeroize::Zeroizing<String>,
     pub signer: TenantSigner,
+    pub writes: bool,
 }
 impl Config {
     pub fn load() -> Result<Self, &'static str> {
@@ -29,7 +30,13 @@ impl Config {
             env("APP_DATA_DATABASE_ROLE")?,
         )
         .map_err(|_| "Invalid database signing configuration")?;
+        let writes = match std::env::var("APP_DATA_MODE").as_deref().unwrap_or("read") {
+            "read" => false,
+            "write" => true,
+            _ => return Err("APP_DATA_MODE must be read or write"),
+        };
         Ok(Self {
+            writes,
             identity,
             database: zeroize::Zeroizing::new(env("APP_DATA_DATABASE_URL")?),
             signer,
