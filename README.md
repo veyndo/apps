@@ -1,4 +1,4 @@
-# Veyndo Apps: runtime service, model and persistence
+# Veyndo Apps: independent runtime and data services
 
 The native Veyndo app record and job storage now has an independent Rust package.
 `veyndo-app-storage` accepts an existing PostgreSQL connection and explicit
@@ -11,8 +11,11 @@ connects unchanged. It uses your current OAuth identity provider and supplied
 example data, without a Veyndo process or database. See its executable Fetch/SDK
 examples and independent real-process/container checks.
 
-The full app data/installation host, supported production schema and storage
-cutover remain on the [component task list](https://github.com/veyndo/veyndo/blob/main/docs/commerce-components.md).
+The [App Data reader](data-service/) adds independent HTTP/MCP/SDK access to
+private installed App records on a versioned fixed PostgreSQL schema. Current
+OAuth rights, forced signed RLS and a restricted read-only login are enforced.
+It shares actual native page/field rules and the [host authority adapter](authority/).
+Full installation/write/jobs hosting and storage cutover remain on the [component task list](https://github.com/veyndo/veyndo/blob/main/docs/commerce-components.md).
 The storage library is a trusted host port, not a browser authentication boundary.
 
 ## Independent Wasm runtime

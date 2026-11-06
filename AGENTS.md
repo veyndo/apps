@@ -20,3 +20,10 @@ identity adapter may make fixed introspection requests and serve the same bounde
 runtime through HTTP/MCP. It has no SQL/pool, issuer, user/role store, live entity
 resolver or financial writer. Keep network configuration out of model/, runtime/
 and the src/ storage library; their authority rules above remain unchanged.
+
+The separate data-service/ root owns read-only HTTP/MCP hosting, fixed-schema
+installation tooling and current OAuth/signed PostgreSQL admission. Its serving
+process must use a restricted nonowner reader and cannot install packages or
+schemas. Native object-bound models require the actual resolver; deny them until
+that port is implemented. authority/ holds the original shared signing protocol
+and fresh fixed-endpoint introspection, with opt-in network/database features.

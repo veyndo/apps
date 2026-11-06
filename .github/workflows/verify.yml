@@ -86,3 +86,43 @@ jobs:
       - run: python3 service/tests/http_mcp.py
         env:
           APP_RUNTIME_SDK_MODULE: ${{ github.workspace }}/.sdk/src/index.js
+
+  data-reader:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: reader_fixture
+          POSTGRES_PASSWORD: synthetic-fixture-only
+          POSTGRES_DB: reader_fixture
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: veyndo/sdk
+          ref: c621cee931a2e04ba204607a7115f0202797973c
+          path: .sdk
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            data-service
+            authority
+      - run: cargo fmt --manifest-path data-service/Cargo.toml --check
+      - run: cargo clippy --locked --manifest-path data-service/Cargo.toml --all-targets -- -D warnings
+      - run: cargo fmt --manifest-path authority/Cargo.toml --check
+      - run: cargo test --locked --manifest-path authority/Cargo.toml --features oauth
+      - run: cargo test --locked --lib
+      - run: cargo build --locked --manifest-path data-service/Cargo.toml
+      - run: python3 data-service/tests/acceptance.py
+        env:
+          APP_DATA_TEST_ADMIN_URL: postgres://reader_fixture:synthetic-fixture-only@127.0.0.1:5432/reader_fixture
+          APP_DATA_SDK_MODULE: ${{ github.workspace }}/.sdk/src/index.js
