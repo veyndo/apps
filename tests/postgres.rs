@@ -3,6 +3,8 @@
 mod basic_storage;
 #[path = "cases/build_versions.rs"]
 mod build_version_cases;
+#[path = "cases/drafts.rs"]
+mod draft_cases;
 #[path = "cases/installation.rs"]
 mod installation;
 #[path = "cases/installation_concurrency.rs"]
@@ -32,5 +34,6 @@ async fn independent_postgres_contract() -> Result<(), Box<dyn std::error::Error
     job_history_cases::run(&pool).await?;
     secret_cases::run(&pool).await?;
     build_version_cases::run(&pool).await?;
+    draft_cases::run(&pool).await?;
     Ok(())
 }

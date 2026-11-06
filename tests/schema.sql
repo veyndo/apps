@@ -10,3 +10,6 @@ CREATE TABLE app_record_indexes(tenant text NOT NULL,app text NOT NULL,entity te
 CREATE TABLE app_service_secrets(tenant text NOT NULL,app text NOT NULL,kind text NOT NULL,ciphertext text NOT NULL,package_digest text NOT NULL,revision bigint NOT NULL,actor text NOT NULL,rotated_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(tenant,app,kind),FOREIGN KEY(tenant,app) REFERENCES app_packages(tenant,id));
 
 CREATE TABLE developer_builds(id text PRIMARY KEY,tenant text NOT NULL,environment text NOT NULL,app text NOT NULL,version text NOT NULL,digest text NOT NULL,manifest jsonb NOT NULL,prompt text NOT NULL,provider text NOT NULL,model text,summary jsonb NOT NULL,state text NOT NULL DEFAULT 'draft' CHECK(state<>'staged' OR id<>'version-state-fail'),created_at timestamptz NOT NULL DEFAULT now(),archived boolean NOT NULL DEFAULT false,archived_at timestamptz,UNIQUE(tenant,app,version));
+
+CREATE TABLE shop_environments(tenant text NOT NULL,live_tenant text NOT NULL,PRIMARY KEY(tenant,live_tenant));
+CREATE TABLE developer_drafts(tenant text NOT NULL,actor_key text NOT NULL,id text NOT NULL,manifest jsonb NOT NULL,environment text,revision bigint NOT NULL DEFAULT 1,updated_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(tenant,actor_key,id),FOREIGN KEY(environment,tenant) REFERENCES shop_environments(tenant,live_tenant));

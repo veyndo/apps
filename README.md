@@ -251,3 +251,39 @@ The PostgreSQL regression exercises successful staging through the actual shared
 installer with explicit synthetic hooks, failures at admission/install/state
 write, foreign/archive/digest denial, concurrent immutable saves and staging
 versus archival. These fixture policies are not a production identity/compiler.
+
+## Private mutable Studio drafts
+
+Release 0.20.0 adds `drafts`: bounded actor-private autosaves, history projection,
+CAS updates and scoped deletion, using the original fixed `developer_drafts`
+table. No per-app, per-model, per-shop or per-version SQL objects are created.
+The native product delegates to this exact implementation. Mutable drafts remain
+separate from immutable versions, installed packages and live publication.
+
+The trusted host supplies the already authenticated tenant/actor and a mandatory
+`EnvironmentAdmission` implementation on the original transaction. Native Veyndo
+retains current `developer.manage`, signed database scope, private environment
+ownership and the original personal identity or integration-credential binding.
+None of these grants can be selected through a request body.
+
+Save retains strict shared Manifest decoding, original error order, 64 KiB JSON
+budget, per-actor advisory fence, row revision and maximum 20 drafts. Unfinished
+packages can be autosaved without passing install-time compilation; loading a
+draft never installs or approves it. Submitted locale values and omitted fields
+are retained without rewriting them into a canonical published package.
+The caller owns commit/rollback. No identity service or production schema host
+is introduced by this library.
+
+After the disposable PostgreSQL contract test, run:
+
+```sh
+APP_STORAGE_TEST_DATABASE_URL=postgres://.../disposable_storage_test \
+  cargo run --locked --example private_drafts
+```
+
+[The example](examples/private_drafts.rs) saves and reads a private draft, denies
+a stale save and unadmitted environment, demonstrates actor isolation and scoped
+deletion, then rolls back. Its synthetic identities are not a production login
+adapter. Automated storage regressions also cover concurrent create/update and
+quota contention, database reconnect, rollback, byte-budget boundaries, denied
+host checks, revision exhaustion and absence of package/outbox effects.
