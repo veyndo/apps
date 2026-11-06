@@ -313,3 +313,38 @@ actual Ed25519, rejects altered permissions and a revoked operator key, and chec
 passive artwork/payment declarations. No Core process, database, network or real
 merchant secret is used. Full domain admission still runs through the required
 native compiler/policy ports and actual host effects.
+
+## Complete standard package compiler
+
+Apps 0.16.0/model 0.12.0 provides `compiler::compile(&Manifest, &Policy)`.
+It runs all 19 standard domain stages in their original native order: native
+object bindings, order/quote lifecycles, settings, configuration, artwork,
+ontology, schema evolution, publisher distribution, commerce hooks, business
+examples, payment declarations, common grammar, subscriptions, event delivery,
+schedules, incoming webhooks, surfaces, intelligence metadata and native views.
+The first failure retains its model kind/pointer or actual host error. Domain
+selection is not a caller option and there are no before/after host callbacks that
+can accidentally omit a standard domain. The older `package::compile` is the
+lower-level common grammar and does not replace this complete entry point.
+
+The required policy combines existing field/reference/currency/source/scope,
+native base and public-read contracts, the current operator signature verifier,
+unsigned namespace and destination admission, read effects and the host UTC clock.
+No policy method has an approving default. Native Veyndo delegates to its original
+verified reference/read predicates, canonical currency/content policy, bounded Wasm
+kind parser, current key registry and network policy. Installation consent, actual
+reference ownership, module preparation/ABI verification, live identity, database
+scope and effects remain outside pure package compilation.
+
+[Independent compiler example](../runtime/examples/package_compile.rs) runs all 34
+complete native packages through this same compiler with actual bounded-source
+kind parsing, explicit synthetic host policies and unchanged package fingerprints.
+Five runtime regressions cover all packages, one invalid input in each of the 19
+stages, exact first-error/host-callback order, denied policies and actual native-view
+lookup. Unsupported money/richtext/relations and all publisher signatures fail
+closed in the synthetic example; it is not a production policy implementation.
+
+```sh
+cargo run --locked --manifest-path runtime/Cargo.toml --example package_compile
+cargo test --locked --manifest-path runtime/Cargo.toml --test complete_compiler
+```

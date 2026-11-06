@@ -48,7 +48,7 @@ pub fn compile<P: Policy, H: Extensions>(
     validate(m, policy).map_err(CompileError::Model)?;
     host.after().map_err(CompileError::Host)
 }
-fn validate<P: Policy>(m: &Contract<'_>, policy: &P) -> Result<()> {
+pub(crate) fn validate<P: Policy>(m: &Contract<'_>, policy: &P) -> Result<()> {
     if m.category
         .is_some_and(|c| !["commerce", "payment", "api", "ai", "design", "operations"].contains(&c))
     {
