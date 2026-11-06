@@ -15,3 +15,5 @@ CREATE TABLE shop_environments(tenant text NOT NULL,live_tenant text NOT NULL,PR
 CREATE TABLE developer_drafts(tenant text NOT NULL,actor_key text NOT NULL,id text NOT NULL,manifest jsonb NOT NULL,environment text,revision bigint NOT NULL DEFAULT 1,updated_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(tenant,actor_key,id),FOREIGN KEY(environment,tenant) REFERENCES shop_environments(tenant,live_tenant));
 
 CREATE TABLE app_record_versions(tenant text NOT NULL,app text NOT NULL,entity text NOT NULL,record_id text NOT NULL,revision bigint NOT NULL,fields jsonb NOT NULL,read_scopes jsonb NOT NULL,actor text,source text NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(tenant,app,entity,record_id,revision),FOREIGN KEY(tenant,app) REFERENCES app_packages(tenant,id) ON DELETE CASCADE);
+
+CREATE TABLE app_schema_history(tenant text NOT NULL,app text NOT NULL,to_version text NOT NULL,from_version text NOT NULL,old_manifest jsonb NOT NULL,records jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(tenant,app,to_version),FOREIGN KEY(tenant,app) REFERENCES app_packages(tenant,id),CHECK(octet_length(records::text)<=4194304));

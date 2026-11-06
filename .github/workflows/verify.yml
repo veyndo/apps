@@ -42,6 +42,7 @@ jobs:
       - run: cargo run --locked --example private_drafts
       - run: cargo run --locked --example record_history
       - run: cargo run --locked --example package_state
+      - run: cargo run --locked --example schema_upgrade
 
   runtime:
     runs-on: ubuntu-latest
