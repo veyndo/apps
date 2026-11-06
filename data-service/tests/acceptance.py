@@ -128,7 +128,7 @@ try:
     assert read(token=TOKEN_B)['elements'][0]['title']=='Beta0'
     assert read(dict(QUERY,query={'id':'note_2'}))['elements'][0]['revision']==3
     read(expected=401,token=None)
-    for body in [dict(QUERY,tenant='shop_b'),dict(QUERY,query={'limit':101}),dict(QUERY,query={'limit':0}),dict(QUERY,query={'filter':{'title':'Beta0'}}),dict(QUERY,query={'id':''})]:read(body,400)
+    for body in [dict(QUERY,tenant='shop_b'),dict(QUERY,query={'limit':101}),dict(QUERY,query={'limit':0}),dict(QUERY,query={'filter':{'title':'Beta0'}}),dict(QUERY,query={'id':''}),dict(QUERY,query={'limit':None}),dict(QUERY,query={'after':None}),dict(QUERY,query={'id':None})]:read(body,400)
     read(dict(QUERY,app='not_installed'),404)
     for change in [dict(scope='apps.read'),dict(merchant=False),dict(active=False),dict(aud='other'),dict(exp=1)]:
         old=CLAIMS[TOKEN_A].copy();CLAIMS[TOKEN_A].update(change)
