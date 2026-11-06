@@ -2,6 +2,8 @@
 pub use veyndo_app_model as model;
 mod error;
 pub mod installation;
+pub mod job_control;
+pub mod job_history;
 pub mod jobs;
 pub mod mutations;
 pub mod packages;
