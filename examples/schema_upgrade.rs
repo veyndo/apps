@@ -8,14 +8,17 @@ use veyndo_app_storage::{
     schema_upgrade::{self, Validation},
 };
 struct SyntheticPolicy;
-impl Validation for SyntheticPolicy {
+impl<'db> Validation<'db> for SyntheticPolicy {
     type Error = &'static str;
     fn fields<'a>(
         &'a self,
-        _: &'a mut sqlx::PgConnection,
+        _: &'a mut sqlx::Transaction<'db, sqlx::Postgres>,
         _: &'a Entity,
         fields: &'a Value,
-    ) -> HookFuture<'a, Self::Error> {
+    ) -> HookFuture<'a, Self::Error>
+    where
+        'db: 'a,
+    {
         Box::pin(async move {
             if fields["quantity"].as_i64().is_some_and(|v| v >= 0) {
                 Ok(())

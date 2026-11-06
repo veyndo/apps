@@ -26,14 +26,16 @@ impl<E> From<sqlx::Error> for UpgradeError<E> {
 }
 /// Required for every converted row, on the same transaction. No approving default:
 /// hosts validate typed fields, enabled languages, currency and rich-content policy.
-pub trait Validation: Sync {
+pub trait Validation<'db>: Sync {
     type Error: Send;
     fn fields<'a>(
         &'a self,
-        tx: &'a mut sqlx::PgConnection,
+        tx: &'a mut Transaction<'db, Postgres>,
         entity: &'a Entity,
         fields: &'a Value,
-    ) -> HookFuture<'a, Self::Error>;
+    ) -> HookFuture<'a, Self::Error>
+    where
+        'db: 'a;
 }
 fn project(entity: &Entity, row: &Value) -> Value {
     let mut fields = serde_json::Map::new();
@@ -46,8 +48,8 @@ fn project(entity: &Entity, row: &Value) -> Value {
 }
 /// Invoke only within admitted complete installation under its tenant/package fences.
 /// Errors require caller rollback. No commit, schema creation or automatic historical rewind.
-pub async fn upgrade<V: Validation>(
-    tx: &mut Transaction<'_, Postgres>,
+pub async fn upgrade<'db, V: Validation<'db>>(
+    tx: &mut Transaction<'db, Postgres>,
     scope: Scope<'_>,
     old: &Manifest,
     m: &Manifest,
