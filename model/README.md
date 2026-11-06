@@ -285,6 +285,8 @@ alone does not admit a package or approve its provider.
 original sorted serde_json representation. Only the signature itself is cleared
 from the signed message. The storage package delegates to this same fingerprint.
 Existing package/action/version/source fences therefore use identical bytes.
+Recursive key ordering preserves those fingerprints even when a downstream host
+unifies serde_json with `preserve_order`; CI checks that explicit feature case.
 
 `presentation::validate` keeps passive media/assets and credential-free HTTPS
 artwork grammar. The `url` dependency only parses URLs; it never fetches them.

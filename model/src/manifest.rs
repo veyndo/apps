@@ -90,10 +90,30 @@ impl Manifest {
         }
     }
 }
-/// Original sorted serde_json Value representation, including float_roundtrip and strict typed defaults.
+/// Original sorted serde_json Value representation, independent of downstream preserve_order feature unification.
 pub fn value_digest(value: &serde_json::Value) -> String {
     use sha2::{Digest, Sha256};
-    format!("{:x}", Sha256::digest(value.to_string().as_bytes()))
+    fn ordered(value: &serde_json::Value) -> serde_json::Value {
+        match value {
+            serde_json::Value::Object(object) => {
+                let mut keys: Vec<_> = object.keys().collect();
+                keys.sort();
+                let mut output = serde_json::Map::new();
+                for key in keys {
+                    output.insert(key.clone(), ordered(&object[key]));
+                }
+                serde_json::Value::Object(output)
+            }
+            serde_json::Value::Array(values) => {
+                serde_json::Value::Array(values.iter().map(ordered).collect())
+            }
+            _ => value.clone(),
+        }
+    }
+    format!(
+        "{:x}",
+        Sha256::digest(ordered(value).to_string().as_bytes())
+    )
 }
 pub fn canonical_digest(manifest: &Manifest) -> String {
     value_digest(&serde_json::json!(manifest))

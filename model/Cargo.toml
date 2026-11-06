@@ -13,3 +13,6 @@ cron = "0.17"
 sha2 = "0.10"
 semver = "1"
 url = "2"
+
+[features]
+ordered-json-compat = ["serde_json/preserve_order"]

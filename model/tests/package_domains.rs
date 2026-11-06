@@ -192,3 +192,17 @@ fn multiple_capture_keeps_required_operational_dependencies() {
         assert!(payment_provider::validate_contract(&bad).is_err());
     }
 }
+
+#[test]
+fn downstream_json_order_cannot_change_nested_package_fingerprints() {
+    use veyndo_app_model::manifest::value_digest;
+    let first: Value =
+        serde_json::from_str(r#"{"z":{"b":1.5,"a":-0.0},"a":[{"y":2,"x":3}]}"#).unwrap();
+    let second: Value =
+        serde_json::from_str(r#"{"a":[{"x":3,"y":2}],"z":{"a":-0.0,"b":1.5}}"#).unwrap();
+    assert_eq!(value_digest(&first), value_digest(&second));
+    assert_ne!(
+        value_digest(&first),
+        value_digest(&json!({"a":[{"x":3,"y":2}],"z":{"a":0,"b":1.5}}))
+    );
+}
