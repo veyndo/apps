@@ -101,4 +101,5 @@ def run(g):
     sql(f"UPDATE app_service_secrets SET ciphertext='{own}' WHERE tenant='shop_a'")
     assert read()['revision']==5
     claims['scope']='apps.read';read(expected=403)
+    g['env']=env
     print('PASS independent settings: personal live authority, encrypted partial updates, secret-safe HTTP/MCP/SDK, two shops, package/revision CAS, rollback, key/reconnect and no package/schema authority')

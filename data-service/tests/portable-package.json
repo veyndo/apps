@@ -1,0 +1,95 @@
+{
+  "id": "app_notes",
+  "version": "0.1.0",
+  "coreApi": "1",
+  "runtime": "declarative",
+  "name": {
+    "en": "Notes",
+    "de": "Notizen",
+    "es": "Notas"
+  },
+  "permissions": [
+    "data.read",
+    "data.write"
+  ],
+  "entities": [
+    {
+      "name": "notes",
+      "fields": [
+        {
+          "name": "title",
+          "kind": "string",
+          "required": true
+        },
+        {
+          "name": "enabled",
+          "kind": "boolean"
+        }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "key": "api_token",
+      "label": {
+        "en": "API token",
+        "de": "Zugang"
+      },
+      "kind": "secret",
+      "required": true
+    }
+  ],
+  "actions": [
+    {
+      "name": "list_notes",
+      "description": "Read private notes",
+      "handler": "list",
+      "entity": "notes",
+      "permission": "catalog.read",
+      "mcp": true,
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "after": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "name": "save_note",
+      "description": "Save private note",
+      "handler": "save",
+      "entity": "notes",
+      "permission": "catalog.write",
+      "mcp": true,
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "id",
+          "revision",
+          "fields"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "fields": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  ]
+}

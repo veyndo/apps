@@ -58,19 +58,7 @@ fn admit<'a>(app: &'a App, p: &Principal, id: &str) -> Result<Crypto<'a>> {
             "Settings management is not enabled on this host",
         ));
     };
-    if !p.merchant
-        || !p.personal_session
-        || !p.live
-        || p.subject == "bootstrap"
-        || !p.permits("apps.manage")
-        || !p.permits("team.manage")
-    {
-        return Err(Problem::new(
-            StatusCode::FORBIDDEN,
-            "settings_authority",
-            "A current personal live-shop administrator session with apps.manage and team.manage is required",
-        ));
-    }
+    crate::management::admit(p)?;
     if id.is_empty() || !veyndo_app_authority::database::identifier(id) {
         return Err(bad());
     }

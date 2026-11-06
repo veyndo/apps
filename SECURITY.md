@@ -45,3 +45,17 @@ updates preserve omitted current secrets. Wrong key/binding, late event failure
 or CAS conflict rolls back without emitting values. Vault keys are not scope
 signing keys. Their safe storage, backup and coordinated rotation belong to the
 operator; schema migration does not rotate encryption keys.
+
+## Explicit portable installation profile
+
+Schema 4 adds narrow package/model DML, immutable version inserts and protected
+per-App budget accounting. No owner, DDL, signing-key, version-update/delete or
+quota-counter update authority is granted. Exact profile startup checks remain
+mandatory. SQL policies keep reserved package definitions outside installer writes.
+The operator supplies the scope catalogue; packages never grant their own scopes.
+The complete compiler and portable profile deny native references, publisher trust,
+UI, external effects and explicit data migrations until their real policies exist.
+Review is read-only; install requires a fresh personal live administrator, exact
+permissions/digest and current package revision. Models, package/version, budget
+initialization and minimized event commit together. No preview/publication flag
+can be supplied to skip immutable version admission.

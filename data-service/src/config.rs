@@ -5,6 +5,7 @@ pub struct Config {
     pub database: zeroize::Zeroizing<String>,
     pub signer: TenantSigner,
     pub writes: bool,
+    pub installs: Option<Vec<String>>,
     pub settings: Option<veyndo_app_authority::vault::Vault>,
 }
 impl Config {
@@ -60,7 +61,35 @@ impl Config {
             }
             _ => return Err("Settings require APP_DATA_MODE=write and APP_DATA_SETTINGS=enabled"),
         };
+        let installs = match std::env::var("APP_DATA_INSTALLS")
+            .as_deref()
+            .unwrap_or("disabled")
+        {
+            "disabled" => None,
+            "enabled" if settings.is_some() => {
+                let scopes: Vec<String> = serde_json::from_str(&env("APP_DATA_INSTALL_SCOPES")?)
+                    .map_err(|_| "Invalid installer scope catalogue")?;
+                if scopes.is_empty()
+                    || scopes.len() > 128
+                    || scopes.iter().any(|s| {
+                        s.is_empty()
+                            || s.len() > 64
+                            || !s.bytes().all(|b| {
+                                b.is_ascii_lowercase()
+                                    || b.is_ascii_digit()
+                                    || b == b'.'
+                                    || b == b'_'
+                            })
+                    })
+                {
+                    return Err("Invalid installer scope catalogue");
+                }
+                Some(scopes)
+            }
+            _ => return Err("Installation requires the explicitly enabled settings/write profile"),
+        };
         Ok(Self {
+            installs,
             settings,
             writes,
             identity,
