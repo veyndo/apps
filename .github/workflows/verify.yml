@@ -38,6 +38,7 @@ jobs:
       - run: cargo test --locked --test postgres -- --ignored --nocapture
       - run: cargo run --locked --example job_control
       - run: cargo run --locked --example encrypted_settings
+      - run: cargo run --locked --example build_versions
 
   runtime:
     runs-on: ubuntu-latest

@@ -8,3 +8,5 @@ CREATE TABLE app_versions(tenant text NOT NULL,app text NOT NULL,version text NO
 CREATE TABLE app_record_indexes(tenant text NOT NULL,app text NOT NULL,entity text NOT NULL,record_id text NOT NULL,field text NOT NULL,value_hash bytea NOT NULL,value jsonb NOT NULL);
 
 CREATE TABLE app_service_secrets(tenant text NOT NULL,app text NOT NULL,kind text NOT NULL,ciphertext text NOT NULL,package_digest text NOT NULL,revision bigint NOT NULL,actor text NOT NULL,rotated_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(tenant,app,kind),FOREIGN KEY(tenant,app) REFERENCES app_packages(tenant,id));
+
+CREATE TABLE developer_builds(id text PRIMARY KEY,tenant text NOT NULL,environment text NOT NULL,app text NOT NULL,version text NOT NULL,digest text NOT NULL,manifest jsonb NOT NULL,prompt text NOT NULL,provider text NOT NULL,model text,summary jsonb NOT NULL,state text NOT NULL DEFAULT 'draft' CHECK(state<>'staged' OR id<>'version-state-fail'),created_at timestamptz NOT NULL DEFAULT now(),archived boolean NOT NULL DEFAULT false,archived_at timestamptz,UNIQUE(tenant,app,version));
