@@ -1,6 +1,6 @@
 [package]
 name = "veyndo-app-storage"
-version = "0.14.0"
+version = "0.15.0"
 edition = "2024"
 license-file = "LICENSE"
 description = "Scoped PostgreSQL persistence extracted from Veyndo native app records and jobs"
@@ -15,3 +15,5 @@ sqlx = { version = "0.9", default-features = false, features = ["postgres", "jso
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "sync"] }
 sqlx = { version = "0.9", default-features = false, features = ["postgres", "json", "runtime-tokio", "tls-rustls"] }
+base64 = "0.22"
+ring = "0.17"

@@ -141,6 +141,17 @@
         "src/commerce/order_machine.rs"
       ],
       "boundary": "Exact lifecycle/extended graph/snapshot wire types, bounded graph compiler, deterministic namespace and version/digest policies, locale fallback, narrowing facts and accepted snapshot/label projection. Mandatory native base graph/scope/locale and current-permission ports; native order-domain base validation, actual locks/current identity/transactional effects and verified final transition predicate remain host owners."
+    },
+    {
+      "sourceCommit": "c9240133edb3127aed652c56e54370c1ca393f97",
+      "sourceOwners": [
+        "src/apps/manifest.rs",
+        "src/apps/presentation.rs",
+        "src/apps/distribution.rs",
+        "src/apps/approval.rs",
+        "src/payments/contract.rs"
+      ],
+      "boundary": "Complete strict typed Manifest, common grammar projection and canonical fingerprint/signing message; original passive artwork and payment declaration grammar plus distribution/dependency graph rules. Required current operator signature verification, reserved namespaces/service pins, current identity, installed scoped locks and actual financial effects remain native."
     }
   ]
 }

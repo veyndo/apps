@@ -1,10 +1,9 @@
 //! Original installed-package lock/read and canonical content fingerprint; validation/approval and transaction commit remain with the host.
 use crate::Scope;
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 use sqlx::PgConnection;
 pub fn digest(manifest: &Value) -> String {
-    format!("{:x}", Sha256::digest(manifest.to_string().as_bytes()))
+    veyndo_app_model::manifest::value_digest(manifest)
 }
 /// Matches the install lock in shared mode. Holds the active scoped row until the caller commits or rolls back.
 pub async fn lock(tx: &mut PgConnection, scope: Scope<'_>) -> Result<Option<Value>, sqlx::Error> {
