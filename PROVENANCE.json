@@ -199,6 +199,14 @@
         "src/apps/record_write.rs"
       ],
       "boundary": "Original immutable app-record capture/read/restore orchestration with retained list-action scopes, actor/source SQL context, original per-record 20 and per-app 16 MiB pruning/lock sequence. Current read authority and actual validated managed restore writer are required ports. Native current entity rights/field projection, approval/revision, signed scope, package/reference/lifecycle/CAS/history/outbox path and caller commit remain authoritative. Nonpositive capture revisions reject before subtraction; no schema creation or direct restore write bypass."
+    },
+    {
+      "sourceCommit": "52eb64e4a491eeac7bd95035b22637cabc5a3bcd",
+      "sourceOwners": [
+        "src/apps/routes.rs",
+        "src/apps/distribution.rs"
+      ],
+      "boundary": "Original app-state transaction with required native config-before-lifecycle lock, actual activation and connected-frontend hooks. Original tenant/package fences shared with installation/writers, active-dependant query, late revision CAS/error order, response and retained data semantics. Current actor/merchant/signed scope, consent/publisher trust/dependencies/commerce/native-lifecycle owners and commit remain native. No implicit installation, deletion, new event/schema or approving default host."
     }
   ]
 }

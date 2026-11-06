@@ -322,3 +322,39 @@ to test successful restoration, two competing restores, stale versions, changed
 rights/field shapes, history/audit failures and atomic rollback. Retention tests
 exercise actual `pg_column_size` beyond 16 MiB and preserve other apps/tenants.
 Production identity/schema hosting and final product deployment remain separate.
+
+## Package activation and deactivation
+
+Release 0.22.0 adds `activation`: the original state-change transaction with
+mandatory host configuration/activation/deactivation hooks, original tenant/package
+fences, active-dependant check and revision CAS. It uses the same lifecycle locks
+as installation and active-package writers. Data, versions, credentials and jobs
+retain their separate lifecycles; this operation deletes none of them and emits
+no new event. Same-state requests still advance the revision, as in native Veyndo.
+
+The trusted host admits the exact current actor and scope before calling `set`.
+`StateHooks::prepare` locks the actual configuration/automation owner first.
+`activating` must validate the actual installed package, current actor scopes,
+consent/trust, dependencies, commerce hooks and native lifecycle. `deactivating`
+refuses connected host frontends or equivalent host dependencies. All hooks are
+required, with no approving defaults, on the original caller transaction.
+Native Veyndo implements them through the original owners. Caller rollback is
+mandatory on any hook/storage/conflict error; the library never commits.
+
+Revision validation retains its original position after branch admission; missing
+packages, frontends and dependencies keep their existing error order. An exhausted
+bigint revision fails in PostgreSQL without partial state or wrapped clocks.
+The standalone service identity/schema/API/MCP host remains separate work.
+
+After the disposable PostgreSQL contract test, run:
+
+```sh
+APP_STORAGE_TEST_DATABASE_URL=postgres://.../disposable_storage_test \
+  cargo run --locked --example package_state
+```
+
+[The example](examples/package_state.rs) explicitly denies both operations without
+actual host authority and rolls back. Storage tests use durable synthetic host
+facts/connected references for successful transitions and denial cases, then the
+actual shared installer/package writer to test dependency races in both orders.
+Those fixture facts do not replace production authentication or native trust.

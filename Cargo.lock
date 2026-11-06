@@ -1497,7 +1497,7 @@ dependencies = [
 
 [[package]]
 name = "veyndo-app-storage"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "base64",
  "chrono",
