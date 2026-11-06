@@ -215,3 +215,25 @@ Run `cargo run --locked --example native_views` from the repository root for a
 localized form and its validate/save behavior, without a Core binary or database.
 Independent compiler cases are in `model/tests/native_views.rs`; the original
 care-studio contract fixture is retained with extraction provenance.
+
+## Configuration and executable business contracts
+
+`configuration` owns the exact configuration DTO, structured fields, frozen cases,
+public library/lookup declarations, record selection and exact integer/boolean
+arguments. Required `Policy` ports reuse canonical currency, field-value and core
+reference rules. Legacy text configuration retains character counts and strict
+single-field input. This contract does not fetch a library record or select a
+current installed package.
+
+`commerce_hooks` shares strict source/hook/read-only-record declarations. Its
+source-kind callback must use the trusted bounded Wasm executor; permissions and
+record declarations remain required. `business_capability` and `business_snapshot`
+share localized intent, bounded synthetic snapshots, declared hook bindings and
+expected decisions with exact money and error pointers. Frozen records receive
+the same host field validation; no live data is read.
+
+The model stays pure and does not depend on Wasmtime, SQL or network clients.
+The runtime package projects admitted frozen snapshots into WIT, executes the
+actual guest and compares its result. Model declaration validation and executed
+example acceptance are separate mandatory steps in the complete native compiler.
+See the [independent business preflight](../runtime/examples/business_preflight.rs).

@@ -63,3 +63,27 @@ examples with repository provenance. Independent CI runs the original guest
 regressions, explicit host denial, fresh-store/source-identity, namespace and
 snapshot guards. Native composition additionally tests actual quote/checkout,
 configuration, preview, release, API/MCP, current rights and tenant isolation.
+
+## Business preflight
+
+`cargo run --locked --manifest-path runtime/Cargo.toml --example business_preflight`
+validates and executes the original structured material/dimension configuration
+and frozen commerce examples without a Core process, database or inference.
+Changed expected values or changed/trapping guests reject the business examples.
+
+Runtime 0.2.0 uses the shared pure `veyndo-app-model` contracts:
+
+- `business_snapshot::snapshot` projects an already-admitted synthetic snapshot
+  into the original WIT types. It does not read live records or confer authority.
+- `business_examples::verify` executes admitted capability examples through the
+  same bounded `Sandbox` and preserves `/capability/examples/.../expected` errors.
+  First run the model validators with real host policies and validate the ABI.
+- `configuration::run` executes the existing integer contribution function or fee
+  probe, retaining its exact result bounds. Validate and select fields with the
+  shared model configuration functions before calling it.
+
+The native adapter retains canonical field/currency/reference policies, current
+package/digest selection, library record ownership and async preparation. It calls
+these same model and execution functions. A successful synthetic example neither
+publishes a package nor authorizes a checkout mutation. Full typed native domain
+compilation, identity and standalone API/MCP hosting remain separate tracked work.

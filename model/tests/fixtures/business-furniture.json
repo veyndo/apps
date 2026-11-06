@@ -1,0 +1,384 @@
+{
+  "entities": [
+    {
+      "name": "materials",
+      "label": {
+        "en": "Material library",
+        "de": "Materialbibliothek",
+        "fr": "Biblioth\u00e8que de mat\u00e9riaux",
+        "es": "Biblioteca de materiales"
+      },
+      "publicRead": true,
+      "fields": [
+        {
+          "name": "name",
+          "kind": "string",
+          "required": true,
+          "translatable": true,
+          "label": {
+            "en": "Material",
+            "de": "Material",
+            "fr": "Mat\u00e9riau",
+            "es": "Material"
+          }
+        },
+        {
+          "name": "fee_minor",
+          "kind": "integer",
+          "required": true,
+          "label": {
+            "en": "Material surcharge in minor units",
+            "de": "Materialzuschlag in Untereinheiten",
+            "fr": "Suppl\u00e9ment en unit\u00e9s mineures",
+            "es": "Recargo en unidades menores"
+          },
+          "validation": {
+            "minimum": 0,
+            "maximum": 100000
+          }
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "name": "list_materials",
+      "description": "Read the public material library",
+      "handler": "list",
+      "entity": "materials",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "additionalProperties": false
+      },
+      "public": true,
+      "readOnly": true,
+      "mcp": true
+    },
+    {
+      "name": "save_materials",
+      "description": "Create or revise a material through the shared managed store",
+      "handler": "save",
+      "entity": "materials",
+      "permission": "catalog.write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "fields": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "fields"
+        ],
+        "additionalProperties": false
+      },
+      "public": false,
+      "mcp": true
+    },
+    {
+      "name": "orders",
+      "description": "Inspect immutable purchased furniture configurations",
+      "handler": "configurations",
+      "entity": null,
+      "permission": "orders.read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "additionalProperties": false
+      },
+      "public": false,
+      "readOnly": true,
+      "mcp": true
+    },
+    {
+      "name": "configure",
+      "description": "Configure the current cart using validated material and dimension inputs; price is calculated by the installed package",
+      "handler": "configure",
+      "public": true,
+      "readOnly": false,
+      "mcp": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "fields": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "productId",
+          "revision",
+          "fields"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "permissions": [
+    "data.read",
+    "data.write",
+    "storefront.slot",
+    "admin.slot",
+    "orders.read"
+  ],
+  "configuration": {
+    "entity": "materials",
+    "record": "oak",
+    "priceField": "fee_minor",
+    "inputField": "width_cm",
+    "wasmSource": ";; Furniture-owned dimensional validation and surcharge. Core retains money, tax, stock and purchasing approval.\n(module\n  (func $valid_fee (export \"validate_fee\") (param $fee i64) (result i32)\n    local.get $fee i64.const 0 i64.ge_s\n    local.get $fee i64.const 100000 i64.le_s i32.and)\n  (func (export \"configuration_fee\") (param $fee i64) (param $width i64) (param $depth i64) (result i64)\n    local.get $fee call $valid_fee\n    local.get $width i64.const 80 i64.ge_s i32.and\n    local.get $width i64.const 400 i64.le_s i32.and\n    local.get $depth i64.const 40 i64.ge_s i32.and\n    local.get $depth i64.const 200 i64.le_s i32.and\n    if (result i64)\n      local.get $fee\n      local.get $width i64.const 240 i64.gt_s\n      if (result i64) i64.const 4800 else i64.const 0 end\n      i64.add\n    else i64.const -1 end))\n",
+    "defaultFields": {
+      "name": {
+        "en": "Oak",
+        "de": "Eiche",
+        "fr": "Ch\u00eane",
+        "es": "Roble"
+      },
+      "fee_minor": 0
+    },
+    "label": {
+      "en": "Make it your own",
+      "de": "Gestalte dein M\u00f6belst\u00fcck",
+      "fr": "Personnalisez votre meuble",
+      "es": "Personaliza tu mueble"
+    },
+    "hint": {
+      "en": "Choose material and dimensions. The shop calculates the surcharge and purchasing approval.",
+      "de": "W\u00e4hle Material und Ma\u00dfe. Der Shop berechnet Zuschlag und Einkaufsfreigabe.",
+      "fr": "Choisissez mat\u00e9riau et dimensions. La boutique calcule le suppl\u00e9ment et l\u2019approbation.",
+      "es": "Elige material y medidas. La tienda calcula el recargo y la aprobaci\u00f3n."
+    },
+    "inputs": {
+      "fields": [
+        {
+          "name": "material",
+          "kind": "string",
+          "required": true,
+          "references": "materials",
+          "label": {
+            "en": "Material",
+            "de": "Material",
+            "fr": "Mat\u00e9riau",
+            "es": "Material"
+          }
+        },
+        {
+          "name": "width_cm",
+          "kind": "integer",
+          "required": true,
+          "label": {
+            "en": "Width in cm",
+            "de": "Breite in cm",
+            "fr": "Largeur en cm",
+            "es": "Ancho en cm"
+          },
+          "validation": {
+            "minimum": 80,
+            "maximum": 400
+          }
+        },
+        {
+          "name": "depth_cm",
+          "kind": "integer",
+          "required": true,
+          "label": {
+            "en": "Depth in cm",
+            "de": "Tiefe in cm",
+            "fr": "Profondeur en cm",
+            "es": "Fondo en cm"
+          },
+          "validation": {
+            "minimum": 40,
+            "maximum": 200
+          }
+        }
+      ],
+      "arguments": [
+        "width_cm",
+        "depth_cm"
+      ],
+      "recordField": "material",
+      "examples": [
+        {
+          "id": "standard",
+          "label": {
+            "en": "Standard",
+            "de": "Standardma\u00df",
+            "fr": "Dimensions standard",
+            "es": "Medida est\u00e1ndar"
+          },
+          "fields": {
+            "material": "oak",
+            "width_cm": 240,
+            "depth_cm": 80
+          },
+          "materialFeeMinor": 0,
+          "expectedFeeMinor": 0
+        },
+        {
+          "id": "boundary",
+          "label": {
+            "en": "Boundary",
+            "de": "Sonderma\u00df ab 241 cm",
+            "fr": "Hors mesure d\u00e8s 241 cm",
+            "es": "Medida especial desde 241 cm"
+          },
+          "fields": {
+            "material": "oak",
+            "width_cm": 241,
+            "depth_cm": 80
+          },
+          "materialFeeMinor": 0,
+          "expectedFeeMinor": 4800
+        },
+        {
+          "id": "material",
+          "label": {
+            "en": "Material",
+            "de": "Materialzuschlag",
+            "fr": "Suppl\u00e9ment mat\u00e9riau",
+            "es": "Recargo por material"
+          },
+          "fields": {
+            "material": "oak",
+            "width_cm": 240,
+            "depth_cm": 80
+          },
+          "materialFeeMinor": 2000,
+          "expectedFeeMinor": 2000
+        },
+        {
+          "id": "combined",
+          "label": {
+            "en": "Combined",
+            "de": "Material und Sonderma\u00df",
+            "fr": "Mat\u00e9riau et hors mesure",
+            "es": "Material y medida especial"
+          },
+          "fields": {
+            "material": "oak",
+            "width_cm": 260,
+            "depth_cm": 80
+          },
+          "materialFeeMinor": 2000,
+          "expectedFeeMinor": 6800
+        },
+        {
+          "id": "too_wide",
+          "label": {
+            "en": "Too wide",
+            "de": "Zu breit wird abgelehnt",
+            "fr": "Largeur excessive refus\u00e9e",
+            "es": "Ancho excesivo rechazado"
+          },
+          "fields": {
+            "material": "oak",
+            "width_cm": 401,
+            "depth_cm": 80
+          },
+          "materialFeeMinor": 0,
+          "expectedFeeMinor": null
+        },
+        {
+          "id": "invalid_type",
+          "label": {
+            "en": "Invalid type",
+            "de": "Text statt Ma\u00df wird abgelehnt",
+            "fr": "Texte au lieu de mesure refus\u00e9",
+            "es": "Texto como medida rechazado"
+          },
+          "fields": {
+            "material": "oak",
+            "width_cm": "260",
+            "depth_cm": 80
+          },
+          "materialFeeMinor": 0,
+          "expectedFeeMinor": null
+        },
+        {
+          "id": "injected_fee",
+          "label": {
+            "en": "Undeclared input",
+            "de": "Fremdes Preisfeld wird abgelehnt",
+            "fr": "Prix inject\u00e9 refus\u00e9",
+            "es": "Precio inyectado rechazado"
+          },
+          "fields": {
+            "material": "oak",
+            "width_cm": 240,
+            "depth_cm": 80,
+            "fee_minor": 0
+          },
+          "materialFeeMinor": 0,
+          "expectedFeeMinor": null
+        }
+      ]
+    },
+    "currency": "EUR"
+  },
+  "capability": {
+    "version": 1,
+    "intent": {
+      "en": "Offer configurable furniture with materials, custom dimensions, validated surcharges, purchasing approval and saved-order lists.",
+      "de": "Konfigurierbare M\u00f6bel mit Materialien, Sonderma\u00dfen, gepr\u00fcften Zuschl\u00e4gen, Einkaufsfreigabe und gespeicherten Bestelllisten anbieten.",
+      "fr": "Proposer des meubles configurables avec mat\u00e9riaux, dimensions, suppl\u00e9ments v\u00e9rifi\u00e9s, approbation et listes enregistr\u00e9es.",
+      "es": "Ofrecer muebles configurables con materiales, medidas, recargos validados, aprobaci\u00f3n y listas guardadas."
+    },
+    "assumptions": [
+      {
+        "en": "Dimensions are in cm; surcharges use EUR minor units. A width greater than 240 cm adds EUR 48.",
+        "de": "Ma\u00dfe in cm; Zuschl\u00e4ge in EUR-Cent. Eine Breite \u00fcber 240 cm kostet zus\u00e4tzlich 48 EUR.",
+        "fr": "Dimensions en cm, suppl\u00e9ments en centimes EUR. Au-del\u00e0 de 240 cm : 48 EUR.",
+        "es": "Medidas en cm, recargos en c\u00e9ntimos EUR. Un ancho superior a 240 cm a\u00f1ade 48 EUR."
+      },
+      {
+        "en": "Native company policies determine approval. Reordering resolves current rules; completed orders retain their original configuration.",
+        "de": "Die Firmenrichtlinien bestimmen die Freigabe. Nachbestellungen nutzen aktuelle Regeln; abgeschlossene Bestellungen behalten ihre urspr\u00fcngliche Konfiguration.",
+        "fr": "Les r\u00e8gles entreprise d\u00e9terminent l\u2019approbation. Une nouvelle commande utilise les r\u00e8gles actuelles ; les commandes pass\u00e9es restent inchang\u00e9es.",
+        "es": "Las pol\u00edticas de empresa determinan la aprobaci\u00f3n. Al repetir se usan las reglas actuales; los pedidos completados no cambian."
+      }
+    ],
+    "examples": []
+  }
+}
