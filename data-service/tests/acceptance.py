@@ -81,7 +81,7 @@ def start(env,success=True):
         if process.poll() is not None:
             log.seek(0);content=log.read();log.close()
             assert not success,content
-            assert 'restricted' in content or 'Unsupported' in content or 'Managed writer' in content, content
+            assert 'restricted' in content or 'Unsupported' in content or 'Managed writer' in content or 'settings writer' in content, content
             return None
         if success:
             try:
@@ -157,6 +157,8 @@ try:
     running=start(dict(env,APP_DATA_SCOPE_KEY='00'*32));read(expected=503)
     from writer_cases import run
     run(globals())
+    from settings_cases import run as settings_run
+    settings_run(globals())
     print('PASS independent Rust HTTP/MCP/SDK, two shops, signed RLS, restricted reader, current rights, revocation, package disable, projection, pagination and native-resolver denial')
 finally:
     if running:running[0].terminate();running[0].wait();running[1].close()

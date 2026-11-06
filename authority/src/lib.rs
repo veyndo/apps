@@ -5,3 +5,5 @@ pub mod database;
 pub mod oauth;
 #[cfg(feature = "oauth")]
 pub mod oauth_config;
+#[cfg(feature = "vault")]
+pub mod vault;

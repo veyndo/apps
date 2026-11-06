@@ -5,6 +5,7 @@ pub struct Config {
     pub database: zeroize::Zeroizing<String>,
     pub signer: TenantSigner,
     pub writes: bool,
+    pub settings: Option<veyndo_app_authority::vault::Vault>,
 }
 impl Config {
     pub fn load() -> Result<Self, &'static str> {
@@ -35,7 +36,32 @@ impl Config {
             "write" => true,
             _ => return Err("APP_DATA_MODE must be read or write"),
         };
+        let settings = match std::env::var("APP_DATA_SETTINGS")
+            .as_deref()
+            .unwrap_or("disabled")
+        {
+            "disabled" => None,
+            "enabled" if writes => {
+                let raw = zeroize::Zeroizing::new(env("APP_DATA_SETTINGS_KEY")?);
+                if raw.len() != 64 || !raw.bytes().all(|b| b.is_ascii_hexdigit()) {
+                    return Err("APP_DATA_SETTINGS_KEY must be 64 hexadecimal characters");
+                }
+                let bytes = zeroize::Zeroizing::new(
+                    (0..64)
+                        .step_by(2)
+                        .map(|i| u8::from_str_radix(&raw[i..i + 2], 16))
+                        .collect::<Result<Vec<_>, _>>()
+                        .map_err(|_| "Invalid settings key")?,
+                );
+                Some(
+                    veyndo_app_authority::vault::Vault::new(&bytes)
+                        .map_err(|_| "Invalid settings key")?,
+                )
+            }
+            _ => return Err("Settings require APP_DATA_MODE=write and APP_DATA_SETTINGS=enabled"),
+        };
         Ok(Self {
+            settings,
             writes,
             identity,
             database: zeroize::Zeroizing::new(env("APP_DATA_DATABASE_URL")?),

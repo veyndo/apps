@@ -1,6 +1,6 @@
 [package]
 name = "veyndo-app-authority"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license-file = "../LICENSE"
 description = "Shared current OAuth context and role-bound database scope tickets for trusted App hosts"
@@ -8,7 +8,10 @@ description = "Shared current OAuth context and role-bound database scope ticket
 default = ["database"]
 database = ["dep:hmac", "dep:sha2", "dep:uuid", "dep:sqlx"]
 oauth = ["dep:reqwest", "dep:serde"]
+vault = ["dep:aes-gcm", "dep:base64"]
 [dependencies]
+aes-gcm = { version = "0.10", optional = true }
+base64 = { version = "0.22", optional = true }
 zeroize = "1"
 hmac = { version = "0.12", optional = true }
 sha2 = { version = "0.10", optional = true }

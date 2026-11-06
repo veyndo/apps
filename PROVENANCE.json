@@ -241,6 +241,14 @@
         "src/apps/record_write.rs"
       ],
       "boundary": "Original lifecycle and before/after bounded history hooks moved to managed_hooks, retaining native field/reference/language/package/identity admission, same transaction and original mutation/outbox owner."
+    },
+    {
+      "sourceCommit": "6172ebd44cc739725d869989755e6bea1fc6a27e",
+      "sourceOwners": [
+        "src/apps/settings.rs",
+        "crates/cognition/src/inference/settings.rs"
+      ],
+      "boundary": "Declared settings encrypted partial-update/projection sequence and original AES-GCM envelope; native personal/live administrator authority and operator key loading remain host-owned. Independent App Data settings profile requires current nondelegatable personal/live identity, explicit schema/role upgrade and its own operator vault key."
     }
   ],
   "standaloneAdapters": [

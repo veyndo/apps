@@ -18,6 +18,7 @@ pub mod record_query;
 pub mod records;
 pub mod schema_upgrade;
 pub mod secrets;
+pub mod settings;
 pub use error::Error;
 
 /// Already admitted host scope. This key is not an authentication credential.

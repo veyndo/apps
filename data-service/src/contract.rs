@@ -48,7 +48,16 @@ pub fn schema() -> Value {
 pub fn tool() -> Value {
     json!({"name":"apps.records.read","description":"Read declared fields of one currently installed private App list action using current merchant permissions","inputSchema":schema(),"annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}})
 }
-pub fn document(writes: bool) -> Value {
+pub fn document(writes: bool, settings: bool) -> Value {
+    if settings {
+        let mut doc = document(writes, false);
+        doc["version"] = json!(3);
+        doc["settings"] = json!(true);
+        for save in [false, true] {
+            doc["operations"].as_array_mut().unwrap().push(json!({"name":if save {"apps.settings.save"}else{"apps.settings.read"},"schema":crate::settings_contract::schema(save)}));
+        }
+        return doc;
+    }
     if writes {
         return json!({"version":2,"service":"veyndo-app-data","operations":[{"name":"apps.records.read","schema":schema()},{"name":"apps.records.write","schema":crate::write_contract::schema()},{"name":"apps.records.history","schema":crate::write_contract::history_schema()}],"writes":true,"profile":"portable-private-records"});
     }
@@ -58,7 +67,7 @@ fn read_openapi() -> Value {
     json!({"openapi":"3.1.0","info":{"title":"Veyndo App Data","version":env!("CARGO_PKG_VERSION")},"paths":{"/v1/records/query":{"post":{"operationId":"apps.records.read","security":[{"bearer":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":schema()}}},"responses":{"200":{"description":"Bounded declared-field record page"},"400":{"description":"Invalid query or installed action schema"},"401":{"description":"Inactive or invalid token"},"403":{"description":"Current permission or MCP grant denied"},"404":{"description":"Installed app or action unavailable"},"422":{"description":"A native object resolver is required"},"503":{"description":"Identity or data service unavailable"}}}}},"components":{"securitySchemes":{"bearer":{"type":"http","scheme":"bearer"}}}})
 }
 
-pub fn openapi(writes: bool) -> Value {
+pub fn openapi(writes: bool, settings: bool) -> Value {
     let mut doc = read_openapi();
     if writes {
         for (path, name, schema) in [
@@ -74,6 +83,16 @@ pub fn openapi(writes: bool) -> Value {
             ),
         ] {
             doc["paths"][path] = json!({"post":{"operationId":name,"security":[{"bearer":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":schema}}},"responses":{"200":{"description":"Managed record result"},"400":{"description":"Invalid input or lifecycle"},"403":{"description":"Current authority or MCP denied"},"409":{"description":"Revision or package conflict"},"422":{"description":"Native policy required"},"503":{"description":"No committed result could be confirmed"}}}});
+        }
+    }
+    if settings {
+        for save in [false, true] {
+            let path = if save {
+                "/v1/settings/save"
+            } else {
+                "/v1/settings/read"
+            };
+            doc["paths"][path] = json!({"post":{"operationId":if save {"apps.settings.save"}else{"apps.settings.read"},"security":[{"bearer":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":crate::settings_contract::schema(save)}}},"responses":{"200":{"description":"Secret-safe settings result"},"400":{"description":"Invalid declared settings"},"403":{"description":"Personal live administrator required"},"409":{"description":"Package or settings revision changed"},"503":{"description":"Encrypted settings unavailable; check revision before retrying"}}}});
         }
     }
     doc

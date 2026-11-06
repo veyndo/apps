@@ -120,4 +120,5 @@ def run(g):
     assert query('case_1')['elements'][0]['revision']==2
     # Same generic SDK executes the write and history tools and the existing read operation.
     subprocess.run([g['os'].environ.get('NODE','node'),str(root/'data-service/examples/write.mjs')],env=dict(g['os'].environ,APP_DATA_URL=g['BASE'],APP_DATA_TOKEN=g['TOKEN_A'],APP_DATA_SDK_MODULE=g['os'].environ['APP_DATA_SDK_MODULE']),check=True)
+    g['env']=env
     print('PASS managed write profile: current scopes, package fences, CAS races, states, historical rights/retention, atomic rollback, SDK/MCP and reconnect')

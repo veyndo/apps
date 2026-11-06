@@ -13,6 +13,8 @@ pub struct Principal {
     pub subject: String,
     scopes: String,
     pub merchant: bool,
+    pub personal_session: bool,
+    pub live: bool,
 }
 impl Principal {
     pub fn permits(&self, scope: &str) -> bool {
@@ -35,6 +37,10 @@ struct Claims {
     exp: Option<u64>,
     #[serde(default)]
     merchant: bool,
+    #[serde(default)]
+    personal_session: bool,
+    #[serde(default)]
+    live: bool,
 }
 fn unauthorized() -> Error {
     Error::InvalidToken
@@ -100,5 +106,7 @@ pub async fn introspect(
         subject,
         scopes,
         merchant: c.merchant,
+        personal_session: c.personal_session,
+        live: c.live,
     })
 }

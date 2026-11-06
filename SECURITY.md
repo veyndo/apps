@@ -26,3 +26,22 @@ requires current apps.manage and installed save rights, explicit confirmation,
 package digest and record revision. It shares the original mutation/state/history
 and atomic outbox sequence. Unsupported native policies deny. See the managed-write
 guide for exact positive/forbidden database privileges and uncertain-response handling.
+
+## Optional settings profile
+
+Schema 3 is an explicit migration-owner upgrade of schema 2, never a startup
+migration. A separate fixed secrets table admits only `settings`, with forced
+signed tenant RLS and bounded authenticated ciphertext. No per-App SQL objects.
+The service needs `APP_DATA_MODE=write`, `APP_DATA_SETTINGS=enabled` and its own
+private key. Both scopes and nondelegatable `personal_session: true`, `live: true`
+claims must come from fresh fixed-endpoint introspection. Requests cannot supply
+these claims. Every settings read/write requires apps.read, apps.manage and
+team.manage. No secret export/resolution endpoint exists.
+
+The trusted installation owner registers each package's canonical digest.
+Settings updates require explicit approval/current package and revision; removed
+settings and previous package secrets never inherit across upgrades. Partial
+updates preserve omitted current secrets. Wrong key/binding, late event failure
+or CAS conflict rolls back without emitting values. Vault keys are not scope
+signing keys. Their safe storage, backup and coordinated rotation belong to the
+operator; schema migration does not rotate encryption keys.
