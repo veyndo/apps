@@ -9,6 +9,10 @@ mod install_hooks;
 mod install_policy;
 mod install_role;
 mod installer;
+mod job_contract;
+mod job_host;
+mod job_role;
+mod job_service;
 mod management;
 mod mcp;
 mod portable;
@@ -45,6 +49,7 @@ impl App {
             config.writes,
             config.settings.is_some(),
             config.installs.is_some(),
+            config.jobs,
         )
         .await?;
         let http = reqwest::Client::builder()
@@ -77,6 +82,7 @@ pub fn router(app: App) -> Router {
                     app.config.writes,
                     app.config.settings.is_some(),
                     app.config.installs.is_some(),
+                    app.config.jobs,
                 ))
             }),
         )
@@ -87,6 +93,7 @@ pub fn router(app: App) -> Router {
                     app.config.writes,
                     app.config.settings.is_some(),
                     app.config.installs.is_some(),
+                    app.config.jobs,
                 ))
             }),
         )
@@ -94,6 +101,7 @@ pub fn router(app: App) -> Router {
         .route("/v1/records/history", post(history))
         .merge(settings::router())
         .merge(installer::router())
+        .merge(job_service::router())
         .route("/mcp", post(mcp::handle))
         .route_layer(middleware::from_fn_with_state(app.clone(), identity::admit));
     Router::new().route("/health",get(||async{Json(serde_json::json!({"ok":true,"service":"veyndo-app-data","version":env!("CARGO_PKG_VERSION")}))})).merge(protected).layer(DefaultBodyLimit::max(if writes {131072}else{16384})).layer(middleware::map_response(|mut r:Response|async move {r.headers_mut().insert(header::CACHE_CONTROL,header::HeaderValue::from_static("no-store"));r.headers_mut().insert(header::X_CONTENT_TYPE_OPTIONS,header::HeaderValue::from_static("nosniff"));r})).with_state(app)

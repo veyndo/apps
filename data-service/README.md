@@ -25,6 +25,14 @@ HTTP, MCP and the existing SDK. [Install a private data App](installation.md).
 It uses the complete compiler and shared native installation/model sequence,
 with immutable version history and original per-App row/byte budgets.
 
+## Optional job supervision
+
+Service 0.5.0 adds a deliberate schema-5 supervisor for existing App jobs:
+[history, details and approved cancel/retry/resolve/archive](jobs.md), through
+HTTP, MCP and the unchanged SDK. Current authority, result redaction, lease/CAS
+fences and atomic events share their native owners. Trusted producers and worker
+execution remain separate; the supervisor has no job creation or result endpoint.
+
 ## Run
 
 Build from the Apps repository root:

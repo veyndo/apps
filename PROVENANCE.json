@@ -256,6 +256,13 @@
         "src/apps/records.rs"
       ],
       "boundary": "Original model-definition installation, required native compatibility, required-field guard and projection rebuild moved into models; complete native installer and source policies retain their owners. Independent portable installer uses the same sequence with full compiler, fresh personal administrator consent, fixed DML profile, immutable versions and quota/event rollback."
+    },
+    {
+      "sourceCommit": "2f1651e99804e2674f8781129cba766347251b98",
+      "sourceOwners": [
+        "src/apps/jobs.rs"
+      ],
+      "boundary": "Original current-rights/current-package job history redaction and queued-event selection extracted into shared job_projection. Native authentication, actor/detail admission, retry input checks, leases and actual execution retain their existing owners."
     }
   ],
   "standaloneAdapters": [
@@ -277,6 +284,11 @@
       "directory": "data-service",
       "version": "0.2.0",
       "boundary": "Opt-in portable private record write/history profile over a deliberate schema/grant upgrade. Current rights, explicit approval, installed digest, row CAS, typed fields, App-owned states, retained historical scopes and atomic outbox; unsupported native policies deny. No installer, privileged serving connection or automatic provider/Flow effects."
+    },
+    {
+      "directory": "data-service",
+      "version": "0.5.0",
+      "boundary": "Explicit schema-5 job supervision: fixed shared job table, exact nonowner control-only DML, current OAuth authority, same original scoped history/control engine, explicit digest/revision/unknown-outcome approval and atomic events. Trusted producers and workers remain separate; no public enqueue, claim, progress, result forgery or new dispatcher."
     }
   ]
 }

@@ -99,6 +99,9 @@ pub async fn handle(
             if app.config.installs.is_some() {
                 tools.extend([install_contract::tool(false), install_contract::tool(true)]);
             }
+            if app.config.jobs {
+                tools.extend(["list", "detail", "control"].map(crate::job_contract::tool));
+            }
             json!({"tools":tools})
         }
         "tools/call" => {
@@ -148,6 +151,22 @@ pub async fn handle(
                     match serde_json::from_value(args) {
                         Ok(input) => installer::install(&app, p, input).await,
                         Err(_) => return fail(-32602, "Invalid package install arguments"),
+                    }
+                }
+                Some(name @ ("apps.jobs.list" | "apps.jobs.detail" | "apps.jobs.control"))
+                    if app.config.jobs =>
+                {
+                    match serde_json::from_value(args) {
+                        Ok(input) => {
+                            crate::job_service::execute(
+                                &app,
+                                p,
+                                input,
+                                name.strip_prefix("apps.jobs.").unwrap(),
+                            )
+                            .await
+                        }
+                        Err(_) => return fail(-32602, "Invalid job arguments"),
                     }
                 }
                 _ => return fail(-32602, "Unknown tool"),

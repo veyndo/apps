@@ -59,3 +59,10 @@ Review is read-only; install requires a fresh personal live administrator, exact
 permissions/digest and current package revision. Models, package/version, budget
 initialization and minimized event commit together. No preview/publication flag
 can be supplied to skip immutable version admission.
+
+The explicit job-supervision profile adds one fixed forced-RLS table. Its login
+cannot enqueue, change input/result/message/keys or create SQL objects. Current
+OAuth supplies identity; personal live administrative authority, explicit digest/
+revision approval and reviewed uncertain outcomes gate control. Original leases,
+CAS and atomic events remain shared. Historical results require current package
+and all action rights; worker tokens and inputs never enter responses.

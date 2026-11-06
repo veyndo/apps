@@ -426,3 +426,12 @@ actual shared installer with required synthetic host hooks and cover multilingua
 values, tenant/app isolation, conversion/validation/late failure rollback, row and
 byte budgets, immutable history collisions and revision exhaustion. These fixtures
 do not provide production identity or signed database authority.
+
+## Supervise existing App jobs independently
+
+The [App job supervisor](data-service/jobs.md) exposes bounded history/detail and
+approved cancel/retry/resolve/archive through HTTP, MCP and the unchanged SDK.
+An explicit fixed-schema profile keeps current identity/rights, immutable job
+inputs/results, retained worker leases and atomic control events. Native Veyndo
+uses the same result-redaction and queued-signal owner. Worker execution remains
+with its actual producer/consumer host.
