@@ -29,3 +29,10 @@ private records with package/revision fences, shared fields/workflow/history and
 atomic outbox. Native resource-dependent models require their actual policies. Native object-bound models require the actual resolver; deny them until
 that port is implemented. authority/ holds the original shared signing protocol
 and fresh fixed-endpoint introspection, with opt-in network/database features.
+
+The optional data-service settings profile requires its explicit schema/grant
+upgrade and a separate operator vault key. Current personal/live claims must come
+from the fixed identity owner, never App/request fields or delegated tokens.
+Native settings use the same shared encrypted partial-update sequence; native
+verified personal/live administration remains attached. Vault provides the
+original envelope only, without key loading, SQL or identity authority.

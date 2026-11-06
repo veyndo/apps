@@ -7,6 +7,9 @@ mod identity;
 mod mcp;
 mod portable;
 mod reader;
+mod settings;
+mod settings_contract;
+mod settings_role;
 mod write_contract;
 mod write_role;
 mod writer;
@@ -30,7 +33,13 @@ pub struct App {
 }
 impl App {
     pub async fn new(config: config::Config, role: &str) -> Result<Self, &'static str> {
-        let pool = database::connect(&config.database, role, config.writes).await?;
+        let pool = database::connect(
+            &config.database,
+            role,
+            config.writes,
+            config.settings.is_some(),
+        )
+        .await?;
         let http = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .connect_timeout(std::time::Duration::from_secs(2))
@@ -56,16 +65,25 @@ pub fn router(app: App) -> Router {
         .route("/v1/records/query", post(read))
         .route(
             "/v1/contract",
-            get(
-                |State(app): State<App>| async move { Json(contract::document(app.config.writes)) },
-            ),
+            get(|State(app): State<App>| async move {
+                Json(contract::document(
+                    app.config.writes,
+                    app.config.settings.is_some(),
+                ))
+            }),
         )
         .route(
             "/v1/openapi.json",
-            get(|State(app): State<App>| async move { Json(contract::openapi(app.config.writes)) }),
+            get(|State(app): State<App>| async move {
+                Json(contract::openapi(
+                    app.config.writes,
+                    app.config.settings.is_some(),
+                ))
+            }),
         )
         .route("/v1/records/write", post(write))
         .route("/v1/records/history", post(history))
+        .merge(settings::router())
         .route("/mcp", post(mcp::handle))
         .route_layer(middleware::from_fn_with_state(app.clone(), identity::admit));
     Router::new().route("/health",get(||async{Json(serde_json::json!({"ok":true,"service":"veyndo-app-data","version":env!("CARGO_PKG_VERSION")}))})).merge(protected).layer(DefaultBodyLimit::max(if writes {131072}else{16384})).layer(middleware::map_response(|mut r:Response|async move {r.headers_mut().insert(header::CACHE_CONTROL,header::HeaderValue::from_static("no-store"));r.headers_mut().insert(header::X_CONTENT_TYPE_OPTIONS,header::HeaderValue::from_static("nosniff"));r})).with_state(app)

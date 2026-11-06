@@ -202,6 +202,15 @@ verified completion predicate remain with the existing host owners.
 
 ## Encrypted app settings and credentials
 
+Release 0.27.0 adds shared `settings::read/save` orchestration and the opt-in
+[standalone settings API, MCP and JavaScript workflow](data-service/settings.md).
+Native Veyndo and the independent host use the same partial updates, encrypted
+CAS persistence, package binding and secret-safe projection. Optional authority
+`vault` provides the original platform AES-GCM envelope without environment, SQL
+or network access. Personal live administrator admission and private key loading
+remain host responsibilities.
+
+
 Release 0.18.0 supplies `secrets` for metadata-only reads, digest-bound internal
 resolution and the original revisioned encrypted rotation transaction. A required
 `Crypto` port supplies authenticated encryption and key management; there is no

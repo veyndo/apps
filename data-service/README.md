@@ -12,6 +12,12 @@ fences, current action rights, typed private records, state transitions, atomic
 history/outbox and the same SDK/MCP operations. [Enable and use managed writes](managed-writes.md).
 The default read profile below keeps its original SELECT-only schema and grants.
 
+## Optional encrypted settings
+
+Service 0.3.0 adds the explicit schema-3 settings profile, shared with native Veyndo.
+[Configure and use encrypted settings](settings.md). The ordinary reader and writer
+profiles retain their existing schema/grants and do not expose settings.
+
 ## Run
 
 Build from the Apps repository root:
@@ -118,9 +124,9 @@ continues using its existing actual installer, shared storage and transaction ow
 
 Models extending or referencing product, customer, order or company are rejected
 with `native_resolver_required` until the real authorized object resolver is wired.
-This cannot be bypassed by adding more token scopes. Settings, secrets, jobs,
-write/history/restore, complete lifecycle orchestration and durable marketplace
-hosting remain separate checklist tasks.
+This cannot be bypassed by adding more token scopes. Managed private writes/history and encrypted settings have explicit opt-in profiles
+above. Transport-secret rotation, jobs, restore, complete lifecycle orchestration
+and durable marketplace hosting remain separate checklist tasks.
 
 ## Verification and image
 

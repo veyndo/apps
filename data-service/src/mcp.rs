@@ -3,7 +3,7 @@ use crate::{
     App, contract,
     error::{Problem, Result},
     identity::Principal,
-    reader, write_contract, writer,
+    reader, settings, settings_contract, write_contract, writer,
 };
 use axum::{
     Extension, Json,
@@ -90,6 +90,12 @@ pub async fn handle(
             if app.config.writes {
                 tools.extend([write_contract::tool(false), write_contract::tool(true)]);
             }
+            if app.config.settings.is_some() {
+                tools.extend([
+                    settings_contract::tool(false),
+                    settings_contract::tool(true),
+                ]);
+            }
             json!({"tools":tools})
         }
         "tools/call" => {
@@ -115,6 +121,18 @@ pub async fn handle(
                     match serde_json::from_value(args) {
                         Ok(input) => writer::history(&app, p, input, true).await,
                         Err(_) => return fail(-32602, "Invalid history arguments"),
+                    }
+                }
+                Some("apps.settings.read") if app.config.settings.is_some() => {
+                    match serde_json::from_value(args) {
+                        Ok(input) => settings::read(&app, p, input).await,
+                        Err(_) => return fail(-32602, "Invalid settings arguments"),
+                    }
+                }
+                Some("apps.settings.save") if app.config.settings.is_some() => {
+                    match serde_json::from_value(args) {
+                        Ok(input) => settings::save(&app, p, input).await,
+                        Err(_) => return fail(-32602, "Invalid settings arguments"),
                     }
                 }
                 _ => return fail(-32602, "Unknown tool"),

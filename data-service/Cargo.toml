@@ -1,13 +1,13 @@
 [package]
 name = "veyndo-app-data-service"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 license-file = "../LICENSE"
-description = "Read-only independent App Data HTTP and MCP host with current OAuth authority and signed PostgreSQL scope"
+description = "Independent App Data HTTP/MCP host with explicit reader, managed-write and encrypted-settings profiles"
 [workspace]
 [dependencies]
 veyndo-app-storage = { path = ".." }
-veyndo-app-authority = { path = "../authority", features = ["oauth"] }
+veyndo-app-authority = { path = "../authority", features = ["oauth", "vault"] }
 axum = "0.8.9"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "sync", "time", "signal"] }
 serde = { version = "1", features = ["derive"] }

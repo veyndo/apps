@@ -11,7 +11,13 @@ environment variables. Enable only the adapters your host needs:
 * `oauth`: immutable fixed HTTPS configuration and fresh bounded RFC 7662 requests.
   No redirects/proxy forwarding, no grant cache, bounded replies and current
   resource audience/expiry/tenant/subject validation. Domain rights remain with
-  the service consuming this context.
+  the service consuming this context. Optional `personal_session` and `live`
+  claims default to false; the identity owner must never assert them for machine,
+  callback or delegated agent tokens. Settings require both plus current administrator
+  scopes. They are not accepted from request bodies.
+* `vault`: the original platform AES-256-GCM nonce/ciphertext Base64 envelope,
+  authenticating the exact host binding. The caller supplies key bytes; this module
+  reads no environment, resolves no identities and grants no database rights.
 
 `sql/signed_scope.sql` is the exact common verifier prefix from native migration
 099 at Core fd370580d97b7133272ba96fb9d31e70a357d7f7. Veyndo checks that exact
