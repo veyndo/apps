@@ -6,7 +6,7 @@ The native Veyndo app record and job storage now has an independent Rust package
 runtime, identity tables, inference, provider clients or environment configuration.
 
 This is the first storage extraction inside the broader Apps component. The full
-standalone app host, permission adapter, complete package compiler, API/MCP service and storage
+standalone app host, authenticated permission adapter, API/MCP service and storage
 cutover remain on the [component task list](https://github.com/veyndo/veyndo/blob/main/docs/commerce-components.md).
 The library is a trusted host port, not a browser API or an authentication boundary.
 
@@ -155,5 +155,36 @@ Release 0.6.0 also exposes the independent model 0.3.0 package compiler. Its com
 metadata/model/action/slot/event grammar runs between mandatory host extension
 validators; reference, scope and Wasm-kind policies are required ports. Native
 Veyndo invokes this same compiler for its real Studio/API/MCP/release consumers.
-The complete typed manifest/domain compiler, identity and standalone service remain
-tracked extraction work. See `model/README.md` and its executable Rust tests.
+The complete typed manifest/domain compiler is now shared through
+`model::compiler`; identity and standalone service remain tracked extraction work. See `model/README.md` and its executable Rust tests.
+
+## Durable job history and control
+
+Release 0.17.0 adds `job_history` for bounded, scoped keyset pages and detail reads,
+and `job_control` for the original cancel/retry/resolve/archive transaction. The
+component owns the row lock, revision comparison, explicit unknown-outcome review,
+lease cleanup, retry actor/package rebind and atomic queued/control outbox writes.
+`RetryAdmission` is mandatory: the host checks the current installed job action,
+current primary/additional rights and stored input before returning its event.
+No implicit retries, second queue, pool creation or internal commit are introduced.
+
+History returns trusted-host rows, including the package fingerprint needed for
+redaction. Before returning them over HTTP/MCP, the host must check current package,
+actor and action rights, clear forbidden messages/results and remove the internal
+fingerprint. A correlation group never grants access. Every control error requires
+rollback of the caller's transaction, including hook writes.
+
+After the disposable PostgreSQL contract test has installed its test schema, run:
+
+```sh
+APP_STORAGE_TEST_DATABASE_URL=postgres://.../disposable_storage_test \
+  cargo run --locked --example job_control
+```
+
+[The example](examples/job_control.rs) executes a synthetic failure, acknowledged
+retry, cancellation and archival using the actual component, then rolls its entire
+transaction back. Its fixed synthetic admission is not a production identity policy.
+The database tests cover scope/hostile labels, tied/cross-tenant/stale cursors,
+uncertainty projections, concurrent CAS, denied admission and hook/outbox rollback.
+Creator-role revalidation, signed callback identities, completion evidence and the
+verified completion predicate remain with the existing host owners.

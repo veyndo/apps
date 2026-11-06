@@ -3,6 +3,10 @@
 mod installation;
 #[path = "cases/installation_concurrency.rs"]
 mod installation_concurrency;
+#[path = "cases/job_control.rs"]
+mod job_control_cases;
+#[path = "cases/job_history.rs"]
+mod job_history_cases;
 #[path = "cases/mutations.rs"]
 mod mutation_cases;
 #[path = "cases/packages.rs"]
@@ -309,5 +313,7 @@ async fn independent_postgres_contract() -> Result<(), Box<dyn std::error::Error
     query_cases::run(&pool).await?;
     package_cases::run(&pool).await?;
     installation::run(&pool).await?;
+    job_control_cases::run(&pool).await?;
+    job_history_cases::run(&pool).await?;
     Ok(())
 }

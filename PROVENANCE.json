@@ -160,6 +160,13 @@
         "src/apps/surfaces.rs"
       ],
       "boundary": "Complete ordered standard package compiler: object/lifecycle/settings/configuration/artwork/ontology/evolution/distribution/hooks/business/provider/common/subscription/delivery/schedule/webhook/surface/intelligence/view checks are mandatory shared stages. Trusted native field/reference/currency/scope/source/base/signature/namespace/destination/read-effect/clock policies remain required ports; actual identity, consent, source preparation, transactional installation and financial effects remain native."
+    },
+    {
+      "sourceCommit": "869cd4cde23a4831d8e9135e94a9fa1d813b3185",
+      "sourceOwners": [
+        "src/apps/jobs.rs"
+      ],
+      "boundary": "Scoped bounded job history/detail projections and original merchant control transaction: row/revision fence, explicit outcome review, retry/cancel/resolve/archive, actor/package rebind and atomic outbox. Required retry hook keeps current action/rights/input admission native. Current response redaction, authenticated identities, callbacks, completion evidence and verified completion stay host-owned."
     }
   ]
 }
