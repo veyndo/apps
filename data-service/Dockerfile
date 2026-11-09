@@ -5,6 +5,7 @@ WORKDIR /build
 COPY LICENSE LICENSE
 COPY authority/Cargo.toml authority/
 COPY authority/src/ authority/src/
+COPY authority/sql/ authority/sql/
 COPY Cargo.toml Cargo.lock ./
 COPY src/ src/
 COPY model/Cargo.toml model/Cargo.lock model/
