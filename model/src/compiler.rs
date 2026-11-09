@@ -44,6 +44,12 @@ impl<P: Policy> surfaces::Policy for SurfacePolicy<'_, P> {
     fn native_view(&self, s: &surfaces::Surface) -> bool {
         views::is_native(&view_contract(self.manifest), s)
     }
+    fn assistant_view(&self, surface: &surfaces::Surface) -> Option<&views::NativeView> {
+        self.manifest
+            .views
+            .iter()
+            .find(|view| surface.ui_path == format!("native/{}", view.id))
+    }
     fn known_scope(&self, s: &str) -> bool {
         package::Policy::known_scope(self.policy, s)
     }

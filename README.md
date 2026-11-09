@@ -435,3 +435,12 @@ An explicit fixed-schema profile keeps current identity/rights, immutable job
 inputs/results, retained worker leases and atomic control events. Native Veyndo
 uses the same result-redaction and queued-signal owner. Worker execution remains
 with its actual producer/consumer host.
+
+## Conversation views
+
+The shared model validates `admin.assistant` and `storefront.assistant`
+placements against a versioned native text, table or card view. The placement
+requires one explicitly MCP-enabled list action with matching public or private
+audience. Veyndo Core hosts the MCP App resource, checks current actor rights and
+embeds the result inside the assistant response. See the
+[package example and host integration](https://github.com/veyndo/veyndo/blob/main/docs/agentic-component-ui.md#app-owned-views-in-the-conversation).
