@@ -24,3 +24,9 @@ environment variables. Enable only the adapters your host needs:
 prefix during component-source verification. Historical native migrations are
 unchanged. The independent data reader attaches its own fixed table policies;
 it does not copy Core identity or order tables.
+
+Database-enabled hosts can use `DATABASE_SCOPE_SCHEMA` to package that exact SQL
+in an explicit migration command. This prevents a separate copied verifier per
+service. The constant installs nothing and grants no runtime privilege. A host
+must append its own fixed schema, configure its restricted tenant login and keep
+the migration owner out of its ordinary serving process.
