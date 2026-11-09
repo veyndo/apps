@@ -56,7 +56,6 @@ impl Fixture {
             permissions: &self.permissions,
             actions: &self.actions,
             surfaces: &self.surfaces,
-            views: &[],
             api_routes: &self.routes,
         }
     }

@@ -8,12 +8,15 @@ pub struct Contract<'a> {
     pub permissions: &'a [String],
     pub actions: &'a [Action],
     pub surfaces: &'a [Surface],
-    pub views: &'a [crate::views::NativeView],
     pub api_routes: &'a [ApiRoute],
 }
 /// No default approvals. Implement with authoritative host registries, views and effect rules.
 pub trait Policy {
     fn native_view(&self, surface: &Surface) -> bool;
+    /// Existing hosts deny this new placement until they supply the actual view.
+    fn assistant_view(&self, _surface: &Surface) -> Option<&crate::views::NativeView> {
+        None
+    }
     fn known_scope(&self, scope: &str) -> bool;
     fn readonly(&self, action: &Action) -> bool;
 }
@@ -42,8 +45,8 @@ pub fn assistant_location(location: &str) -> bool {
     matches!(location, "admin.assistant" | "storefront.assistant")
 }
 
-fn assistant_view(m: &Contract<'_>, surface: &Surface) -> bool {
-    m.views.iter().any(|view| {
+fn assistant_view<P: Policy>(policy: &P, surface: &Surface) -> bool {
+    policy.assistant_view(surface).is_some_and(|view| {
         surface.ui_path == format!("native/{}", view.id)
             && view
                 .blocks
@@ -83,7 +86,7 @@ pub fn validate<P: Policy>(m: &Contract<'_>, policy: &P) -> Result<()> {
             }
         }
         if assistant_location(&s.location)
-            && (!assistant_view(m, s)
+            && (!assistant_view(policy, s)
                 || s.actions.len() != 1
                 || !m.actions.iter().any(|a| {
                     a.name == s.actions[0]
