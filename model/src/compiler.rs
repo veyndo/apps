@@ -161,6 +161,7 @@ pub fn compile<P: Policy>(m: &Manifest, policy: &P) -> Result<(), CompileError<P
             permissions: &m.permissions,
             actions: &m.actions,
             surfaces: &m.surfaces,
+            views: &m.views,
             api_routes: &m.api_routes,
         },
         &SurfacePolicy {

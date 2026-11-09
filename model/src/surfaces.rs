@@ -8,6 +8,7 @@ pub struct Contract<'a> {
     pub permissions: &'a [String],
     pub actions: &'a [Action],
     pub surfaces: &'a [Surface],
+    pub views: &'a [crate::views::NativeView],
     pub api_routes: &'a [ApiRoute],
 }
 /// No default approvals. Implement with authoritative host registries, views and effect rules.
@@ -36,8 +37,31 @@ pub struct ApiRoute {
     pub scope: String,
     pub action: String,
 }
+/// Assistant placements opt a native read tool into MCP Apps.
+pub fn assistant_location(location: &str) -> bool {
+    matches!(location, "admin.assistant" | "storefront.assistant")
+}
+
+fn assistant_view(m: &Contract<'_>, surface: &Surface) -> bool {
+    m.views.iter().any(|view| {
+        surface.ui_path == format!("native/{}", view.id)
+            && view
+                .blocks
+                .iter()
+                .any(|block| matches!(block.kind.as_str(), "cards" | "table"))
+            && view.blocks.iter().all(|block| {
+                matches!(block.kind.as_str(), "text" | "cards" | "table")
+                    && block.handlers.is_none()
+                    && block.context_binding.is_none()
+                    && block.write_action.is_none()
+                    && !block.inline_edit
+            })
+    })
+}
+
 pub fn validate<P: Policy>(m: &Contract<'_>, policy: &P) -> Result<()> {
     let mut ids = std::collections::HashSet::new();
+    let mut assistant_tools = std::collections::HashSet::new();
     if m.surfaces.len() > 16 || m.api_routes.len() > 24 {
         return Err(bad("App surface/route limit exceeded"));
     }
@@ -57,6 +81,23 @@ pub fn validate<P: Policy>(m: &Contract<'_>, policy: &P) -> Result<()> {
                     ),
                 ));
             }
+        }
+        if assistant_location(&s.location)
+            && (!assistant_view(m, s)
+                || s.actions.len() != 1
+                || !m.actions.iter().any(|a| {
+                    a.name == s.actions[0]
+                        && a.handler == "list"
+                        && a.mcp == Some(true)
+                        && policy.readonly(a)
+                        && a.public != private
+                })
+                || !assistant_tools.insert(&s.actions[0]))
+        {
+            return Err(Error::validation(
+                &format!("/surfaces/{surface_index}"),
+                "An assistant placement requires a native text, card or table view with a data block and one explicitly MCP-enabled list action matching its audience. Each tool can have one assistant view.".to_owned(),
+            ));
         }
         if (m.runtime != "service" || s.location == "storefront.block") && !policy.native_view(s) {
             return Err(Error::validation(
@@ -88,6 +129,7 @@ pub fn validate<P: Policy>(m: &Contract<'_>, policy: &P) -> Result<()> {
             || !ids.insert(&s.id)
             || ![
                 "admin.navigation",
+                "admin.assistant",
                 "admin.b2b.company",
                 "admin.b2b.unit",
                 "account.b2b",
@@ -103,6 +145,7 @@ pub fn validate<P: Policy>(m: &Contract<'_>, policy: &P) -> Result<()> {
                 "storefront.page",
                 "storefront.block",
                 "storefront.home",
+                "storefront.assistant",
                 "storefront.header",
                 "product.detail",
                 "cart.summary",
