@@ -27,6 +27,7 @@ mod package_actions;
 pub mod payment_provider;
 pub mod presentation;
 pub mod publication;
+pub mod query_contract;
 pub mod schema;
 mod schema_contract;
 pub mod settings;

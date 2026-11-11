@@ -32,6 +32,11 @@ host responsibilities.
 
 ## Pure model package
 
+Model 0.14.0 supplies `query_contract::list_input_schema` for discoverable native
+list filters. Agent and MCP hosts can expose the actual indexed fields and choice
+values instead of an untyped filter object. This adds no database indexes or
+query authority. See the [model contract](model/README.md).
+
 [`veyndo-app-model`](model/) has no SQL or network dependency. It exports the exact
 entity/field/extension wire types, declaration grammar, bounded action schemas,
 field value checks, enabled-language rules, publication contracts and record
