@@ -21,6 +21,14 @@ outbox for portable private records. Full installation/native-policy/jobs hostin
 and storage cutover remain on the [component task list](https://github.com/veyndo/veyndo/blob/main/docs/commerce-components.md).
 The storage library is a trusted host port, not a browser authentication boundary.
 
+## Current status
+
+Apps 0.29.1 and model 0.14.0 derive filters from indexed, nontranslated scalar fields and localized choices. The hosted Product Guide uses those contracts for a public care card and a private merchant table. A shopper reviewed and confirmed a cart addition. Studio applied a product proposal after approval in a sandbox.
+
+[Component guide](https://www.veyndo.ai/docs/product-guide-mcp-app.html) · [Hosted status](https://www.veyndo.ai/docs/status.html) · [Versions](https://www.veyndo.ai/docs/components.json)
+
+[![Studio applies a reviewed product proposal alongside a private App table](https://raw.githubusercontent.com/veyndo/veyndo/1d824485a47d6c23eb46260c651f42c5d5df492f/docs/assets/apps/product-guide-sandbox-applied-20261111.jpg)](https://www.veyndo.ai/docs/product-guide-mcp-app.html)
+
 ## Independent Wasm runtime
 
 [`veyndo-app-runtime`](runtime/) executes the actual core-Wasm/WIT hooks independently.
