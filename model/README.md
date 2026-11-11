@@ -8,6 +8,10 @@ has no SQL, network, identity resolver or Veyndo application dependency.
   labels, index budgets, publication and workflow declarations.
 - `schema` owns the closed action-input grammar and bounded recursive evaluation.
   Transport-neutral errors retain bad-input/conflict/validation and JSON pointers.
+- `query_contract::list_input_schema` refines a generic list filter from its
+  entity's actual indexes. HTTP/MCP hosts can advertise field names, scalar types,
+  localized labels and string choices without a Veyndo process. Explicit app
+  schemas remain unchanged; storage still enforces count and byte budgets.
 - `fields::validate` checks exact types, choices, additional constraints and
   translated values through the required `ValuePolicy` host adapter.
 - `language::validate` checks enabled languages and required main-language values.
