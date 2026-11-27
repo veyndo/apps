@@ -1,4 +1,31 @@
-# Veyndo Apps: independent runtime and data services
+<p align="center">
+  <img src="https://github.com/veyndo/veyndo/raw/main/docs/brand/veyndo-readme.svg" alt="Veyndo Commerce: commerce that thinks and acts." width="100%">
+</p>
+
+# Veyndo Apps
+
+**Apps that are products, not frontend tweaks.** A Veyndo app brings its own data,
+screens, settings, background jobs and actions, packaged in one versioned
+definition and run as sandboxed Wasm with declared capabilities. This repository
+holds the Rust building blocks behind that: the isolated runtime, the data model,
+scoped storage and the standalone services, usable inside
+[Veyndo Commerce](https://github.com/veyndo/veyndo) or in your own Rust host.
+
+| | |
+| --- | --- |
+| 🧱 **Isolated Wasm runtime** | [`runtime/`](runtime/): core-Wasm/WIT hooks with bounded fuel, memory and host calls, isolated stores and required host admission. |
+| 🗂️ **Typed app data** | [`model/`](model/) declares entities, fields, actions and localized choices; storage enforces tenant scope, CAS, history and quotas on PostgreSQL. |
+| 🔐 **Secure by construction** | Encrypted settings and credentials, signed row-level security, read-only logins, immutable versions and private staging. |
+| ⏱️ **Durable jobs** | Claims, progress, cancellation fences, idempotency and atomic job/outbox handoff. |
+| 🔌 **HTTP, OpenAPI and MCP** | [`service/`](service/) and [`data-service/`](data-service/) expose the same engine to agents and the [JavaScript SDK](https://github.com/veyndo/sdk), with your own OAuth provider. |
+
+Want to build an app rather than the platform? Start with
+[five app tutorials](https://www.veyndo.ai/docs/app-tutorials/README.html) and
+[the app platform guide](https://www.veyndo.ai/docs/app-platform.html). To verify this
+repository on its own, see [Verify without Veyndo](#verify-without-veyndo).
+
+## How the pieces fit
+
 
 The native Veyndo app record and job storage now has an independent Rust package.
 `veyndo-app-storage` accepts an existing PostgreSQL connection and explicit
